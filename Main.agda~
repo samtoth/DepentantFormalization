@@ -1,0 +1,96 @@
+module Main where
+
+  open import Data.Nat
+  open import Data.Fin using (Fin; toℕ)
+
+  import Relation.Binary.PropositionalEquality as Eq
+  open Eq using (_≡_; refl)
+  
+  open import Relation.Nullary.Decidable using (True; toWitness)
+
+  infix  4 _⊢_
+  infix  4 _∋_
+  infixl 5 _,_
+
+  infixr 7 _⇒_
+  infix  5 ƛ_
+  infixl 7 _∙_
+  infix  9 #_
+  infix 8 ∀⦅_⦆_
+
+  data Term : Set where
+    _∙_  : Term → Term → Term
+    #_   : ℕ → Term
+    ƛ⇒_ : Term → Term
+    ⋆    : Term
+    ∀⦅_⦆_ : Term → Term → Term 
+
+  data Context : Set where
+    ∅ : Context 
+    _,_ : Context → Term → Context
+
+
+  data _∋_ :  Context → Term → Set where
+    Z : {Γ : Context } {A : Term } → Γ , A ∋ A
+    S : {Γ : Context } {A : Term } {B : Term } → Γ ∋ A → Γ , B ∋ A
+
+  data _⊢_ : Context → Term → Set where
+   `_ : {Γ : Context } {A : Term}
+        → Γ ∋ A
+        → Γ ⊢ A
+
+   _∙_ : {Γ : Context} {A B : Term}
+       → Γ ⊢ ∀⦅ A ⦆ B
+       → Γ ⊢ A
+       → Γ ⊢ B 
+
+   ƛ_ : {Γ : Context} {A B : Term}
+      → Γ , A ⊢ B
+      → Γ ⊢ ∀⦅ A ⦆ B
+
+   `⋆ : {Γ : Context}
+      → Γ ⊢ ⋆
+
+   `∀⦅_⦆_ : {Γ : Context} 
+           → Γ ⊢ ⋆
+
+  _⟶_ : Term → Term → Term
+  a ⟶ b = ∀⦅ a ⦆ b
+
+  length : Context → ℕ
+  length ∅ = zero
+  length (x , _) = suc (length x)
+
+  lookup : {Γ : Context} → {n : ℕ} → (p : n < length Γ) → Term
+  lookup {(_ , A)} {zero}    (s≤s z≤n)  =  A
+  lookup {(Γ , _)} {(suc n)} (s≤s p)    =  lookup p
+
+  count : ∀ {Γ : Context} {n : ℕ}
+          → (p : n < length Γ)
+          → Γ ∋ lookup p
+  count {Γ , x} {zero} (s≤s z≤n) = Z
+  count {Γ , x} {suc n} (s≤s x₁) = S (count x₁)
+
+  `#_ : ∀ {Γ : Context}
+       → (n : ℕ)
+       → {n∈Γ : True (suc n ≤? length Γ)}
+       → Γ ⊢ lookup (toWitness n∈Γ)
+  `#_ n {n∈Γ} = ` count (toWitness n∈Γ) 
+
+  _ : Term
+  _ = ƛ⇒(ƛ⇒(ƛ⇒(# 1 ∙ (# 1 ∙ # 2))))
+
+  _ : ∀ {Γ : Context} → Γ ⊢ ∀⦅ ⋆ ⦆ (∀⦅ # 0 ⦆ ( # 2 ))
+  _ = ƛ (ƛ (` S (S {!!})))
+  
+  num : Set → Set
+  num A = (A → A) → A → A
+
+  one : ∀ {A : Set} → num A
+  one f x = f x
+
+  two : ∀ {A : Set} → num A
+  two f x = f (f x)
+  
+
+--  Γ ⊢ λX.T : ΠX : κ.κ0 --> Γ, X : κ |- T : κ0 Γ |- κ : *, or even when k = *, by * : * 

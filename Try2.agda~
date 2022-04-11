@@ -1,0 +1,137 @@
+module Try2 where
+
+  open import Data.Nat hiding (_/_)
+  open import Data.Fin using (Fin; toℕ)
+  open import Data.Bool using (true; false)
+
+  import Relation.Binary.PropositionalEquality as Eq
+  open Eq using (_≡_; refl)
+  
+  open import Relation.Nullary using (Dec; yes; no) 
+  open import Relation.Nullary.Decidable using (True; toWitness)
+
+  infixr 7 _⇒_
+  infix  4 _⊢_
+  infix  4 _∋_
+  infixl 5 _,_
+  infix 6 _/_
+
+  data Context : Set
+  data Type : Context → Set
+  data _⊢_ : (Γ : Context) → Type Γ → Set
+  data _∋_ : (Γ : Context) → Type Γ → Set
+  data _⇒_ : Context → Context → Set
+  data _=-ctx_ : Context → Context → Set
+  data _=-⋆_ : {Γ Δ : Context} → Type Γ → Type Δ → Set 
+  data _=-⊢_ : {Γ Δ : Context} {τ₁ : Type Γ} {τ₂ : Type Δ} → Γ ⊢ τ₁ → Δ ⊢ τ₂ → Set
+
+  _/_ : {Γ Δ : Context} → Type Γ → Γ ⇒ Δ → Type Δ
+
+  variable
+    Γ : Context
+    Δ : Context
+    τ : Type Γ
+
+  data Context where
+    ∅ : Context
+    _,_ : (Γ : Context) → Type Γ → Context
+
+  data Type where
+    ⋆ : 
+          ----------------------------------------
+                      Type Γ
+    Π :
+          (τ₁ : Type Γ) → (τ₂ : Type (Γ , τ₁))
+        → ----------------------------------------
+                      Type Γ
+    El :
+             (t : Γ ⊢ ⋆)
+        → ----------------------------------------
+                  Type Γ
+
+  _↦_ : (t : Type Γ) → (t₁ : Type (Γ , t)) → Type Γ
+  _↦_ = Π
+
+  
+
+  
+
+  data _⇒_ where
+    sub : Γ ⊢ τ → (Γ , τ) ⇒ Γ
+    weaken : (σ : Type Γ) → Γ ⇒ (Γ , σ)
+    _↑_ : (ρ : Γ ⇒ Δ) → (σ : Type Γ) → (Γ , σ) ⇒ (Δ , σ / ρ)     
+
+  data _⊢_ where
+     var :
+               Γ ∋ τ
+         → ---------------------------------------    
+               Γ ⊢ τ
+     ƛ :
+             {τ₁ : Type Γ} → {τ₂ : Type (Γ , τ₁)}
+         → ---------------------------------------
+                   (t : Γ  ,  τ₁ ⊢ τ₂)
+         → ---------------------------------------
+                        Γ  ⊢  Π τ₁ τ₂
+
+     _∙_ :
+          (τ₁ : Type Γ) → (τ₂ : Type (Γ , τ₁))
+          → --------------------------------------
+            (func : Γ ⊢ Π τ₁ τ₂) → (arg : Γ ⊢ τ₁)
+          → --------------------------------------
+                          Γ ⊢ (τ₂ / sub arg)
+     _//_ :
+                     {τ : Type Γ}
+         → --------------------------------
+               Γ ⊢ τ   →   (ρ : Γ ⇒ Δ)
+         → --------------------------------
+                      Δ ⊢ (τ / ρ)
+
+-- _/_ : {Γ Δ : Context} → Type Γ → Γ ⇒ Δ → Type Δ
+  ⋆ / ρ = ⋆
+  (Π ty ty₁) / ρ = Π (ty / ρ) (ty₁ / (ρ ↑ ty))
+  El t / ρ = El (t // ρ)
+
+
+  data _∋_ where
+    vz : {σ : Type Γ} → Γ , σ ∋ (σ / weaken σ)
+    vs : Γ ∋ τ → {σ : Type Γ} → Γ , σ ∋ (τ / weaken σ)
+    ▹∋ :  {τ₁ τ₂ : Type Γ} → Γ ∋ τ₁ → τ₁ =-⋆ τ₂ → Γ ∋ τ₂ 
+
+  data _=-ctx_ where
+    ∅-cong : ∅ =-ctx ∅ 
+    ,-cong : {σ₁ : Type Γ} {σ₂ : Type Δ} → Γ =-ctx Δ → σ₁ =-⋆ σ₂ → (Γ , σ₁) =-ctx (Δ , σ₂)
+
+  data _=-⋆_ where
+    ⋆-cong : Γ =-ctx Δ → ⋆ {Γ} =-⋆ ⋆ {Δ}
+    Π-cong : {τ₁₁ : Type Γ} {τ₁₂ : Type Δ} {τ₂₁ : Type (Γ , τ₁₁)} {τ₂₂ : Type (Δ , τ₁₂)} → τ₁₁ =-⋆ τ₁₂ → τ₂₁ =-⋆ τ₂₂ → Π τ₁₁ τ₂₁ =-⋆ Π τ₁₂ τ₂₂
+    El-cong : {t₁ : Γ ⊢ ⋆} {t₂ : Δ ⊢ ⋆} → t₁ =-⊢ t₂ → El t₁ =-⋆ El t₂ 
+
+  cong-sub : (ρ : Γ ⇒ Δ) {τ₁ : Type Γ} {τ₂ : Type Δ} → τ₁ =-⋆ τ₂ → (τ₁ / ρ) =-⋆ τ₂
+  cong-sub = {!!} 
+  
+
+  data _=-⊢_ where
+  
+
+
+
+  length : Context → ℕ 
+  length ∅ = zero
+  length (n , x) = suc (length n)
+
+  lookup : (Γ : Context) → (n : ℕ) → n < length Γ → Type Γ  
+  lookup (Γ , x) zero p = x / weaken x
+  lookup (Γ , x) (suc n) (s≤s p) = lookup Γ n p / weaken x
+          
+  #_ : {Γ : Context} (n : ℕ) → {p< : n < length Γ} → Γ ⊢ lookup Γ n p<
+  # zero = var ({!!})
+  # suc c = {!!}
+
+  id : Γ ⊢ Π ⋆ (El (var vz) ↦ El (var (vs vz)))
+  id {Γ} = ƛ (ƛ (var (▹∋ (vs vz) ({!!}))))
+     where
+       help : ((⋆ / weaken {Γ} ⋆) / weaken {Γ , ⋆} (El (var vz))) =-⋆ El (var (vs (vz {Γ , ⋆ , (El (var vz))}) {⋆}))
+       help = El-cong ?
+
+  _ : ∀ (A : Set) → A → A
+  _ = λ A x → x
