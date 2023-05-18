@@ -1,0 +1,4 @@
+name: samlude
+include:
+  src/
+depend:
