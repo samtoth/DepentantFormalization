@@ -23,11 +23,28 @@ record IsCategory (cat : Category ℓ ℓ') : Type (ℓ-suc (ℓ-max ℓ ℓ')) 
     field
         Id : ∀ {a : cat .Ob} → cat .Hom a a
         _∘_ : ∀ {a b c : cat .Ob} → cat .Hom b c → cat .Hom a b → cat .Hom a c
-
-open IsCategory {{...}}
+module _ where
 
 _[_∘_] : (cat : Category ℓ ℓ') ⦃ _ : IsCategory cat ⦄ → {a b c : cat .Ob} → (f : cat [ b , c ]) → (g : cat [ a , b ]) → cat [ a , c ]
 cat [ f ∘ g ] = f ∘ g
+  where open IsCategory ⦃ ... ⦄
 
-_^op : Category ℓ ℓ' → Category ℓ ℓ'
-Cat Ob Hom ^op = Cat Ob λ a b → Hom b a
+
+data Sym {ℓ} {A : Type ℓ} (R : A → A → Type ℓ') : A → A → Type (ℓ-max ℓ ℓ') where
+  sym : ∀ {a b} → R a b → Sym R b a
+
+_^op : Category ℓ ℓ' → Category ℓ (ℓ-max ℓ ℓ')
+Cat Ob Hom ^op = Cat Ob (Sym Hom)
+
+
+module _ {𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄ where
+
+  open IsCategory ccat
+
+  -- This isn't an instance becuase it seems to mess up isntance resolution for agda
+  -- Maybe there is a way roun this (TODO)
+
+  instance
+    catOp : IsCategory (𝓒 ^op)
+    IsCategory.Id catOp = sym Id
+    IsCategory._∘_ catOp (sym f) (sym g) = sym (g ∘ f)

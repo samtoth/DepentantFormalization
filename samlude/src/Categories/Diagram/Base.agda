@@ -4,7 +4,6 @@ module Categories.Diagram.Base where
 open import Foundations.Prelude
 open import Categories.Category
 open import Categories.Functor
-open import Categories.CATS
 
 private
   variable
@@ -12,18 +11,21 @@ private
 
 module _ (𝓙 𝓒 : Category ℓ ℓ') where
   Diagram : Type (ℓ-suc (ℓ-max ℓ ℓ'))
-  Diagram = CATS [ 𝓙 ,  𝓒 ]
+  Diagram = Functor 𝓙 𝓒
 
+open import Categories.FUNCTORS
+open import Categories.Functor.Const
 
-module _ {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  where
+module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  where
   open Category {{...}}
   open IsCategory ccat
   open Functor {{...}}
 
-  record Cone (D : Diagram 𝓙 𝓒) : Type (ℓ-max ℓ ℓ') where
+
+  record Cone (𝓓 : Diagram 𝓙 𝓒) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
     field
       apex   : 𝓒 .Ob
-      arrows : (x : 𝓙 .Ob) → 𝓒 [ apex , D .F0 x ]
+      arrows : F[ 𝓙 , 𝓒 ] [ Const apex , 𝓓 ]
 
 
   Cones : (D : Diagram 𝓙 𝓒) → Category (ℓ-suc (ℓ-max ℓ ℓ')) (ℓ-suc (ℓ-max ℓ ℓ'))
