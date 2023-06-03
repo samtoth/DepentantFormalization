@@ -41,9 +41,6 @@ module _ {𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄ where
 
   open IsCategory ccat
 
-  -- This isn't an instance becuase it seems to mess up isntance resolution for agda
-  -- Maybe there is a way roun this (TODO)
-
   instance
     catOp : IsCategory (𝓒 ^op)
     IsCategory.Id catOp = sym Id

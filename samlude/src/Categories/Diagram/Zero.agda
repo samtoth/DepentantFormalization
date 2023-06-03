@@ -3,7 +3,6 @@ module Categories.Diagram.Zero where
 
 open import Foundations.Prelude
 open import Categories.Category
-open import Categories.CATS
 open import Categories.Diagram.Base
 
 private
@@ -36,6 +35,10 @@ record Terminal (𝓒 : Category ℓ ℓ') ⦃ ccat : IsCategory 𝓒 ⦄ : Type
 
   ! : {x : Ob} → Hom x ⊤
   ! {x = x} = lim-initial (record { apex = x ; arrows = λ () })
+
+  get : ∀ {x : Ob} → Hom ⊤ x → Ob
+  get {x} _ = x
+
 
 
 record Initial (𝓒 : Category ℓ ℓ') ⦃ ccat : IsCategory 𝓒 ⦄  : Type (ℓ-suc (ℓ-max ℓ ℓ')) where

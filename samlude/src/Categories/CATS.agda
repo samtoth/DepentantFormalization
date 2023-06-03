@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical --cumulativity --allow-unsolved-metas #-}
 module Categories.CATS where
 
 open import Foundations.Prelude
@@ -22,19 +22,35 @@ module _ {ℓ : Level} {ℓ' : Level} where
 
   instance
     CATSisCat : IsCategory (CATS {ℓ} {ℓ'})
-    CATSisCat .Id = record { F0 = Id  ; F1 = Id }
-    CATSisCat ._∘_ = λ F G → record { F0 = F .F0 ∘ G .F0 ; F1 = F .F1 ∘ G .F1 }
+    Functor.F0 (CATSisCat .Id) = Id
+    Functor.F1 (CATSisCat .Id) = Id
+    Functor.F0 ((CATSisCat ._∘_) F G) = F .F0 ∘ G .F0
+    Functor.F1 ((CATSisCat ._∘_) F G) = F .F1 ∘ G .F1
 
   open import Categories.Diagram.Two
+  open import Categories.Diagram.Zero
+  open import Categories.Diagram.Base
 
   open Category
 
+  open Limit
+
   instance
     CATSHasProducts : HasProducts CATS
-    HasProducts.hasLimit CATSHasProducts {a} {b} = record {
-        lim = record {
-                     apex = Cat (a .Ob × b .Ob ) λ ab cd → (a .Hom (π₁ ab) (π₁ cd)) × (b .Hom (π₂ ab) (π₂ cd))
-                   ; arrows = λ { 𝟎 → record { F0 = π₁ ; F1 = λ α → {!π₁ α!} } ; 𝟏 → record { F0 = π₂ ; F1 = {!!} }}
-                   }
-      ; lim-initial = {!!}
-      }
+    Ob (Cone.apex (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓}))) = 𝓒 .Ob × 𝓓 .Ob
+    Hom (Cone.apex (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓}))) cd c'd' = 𝓒 .Hom (π₁ cd) (π₁ c'd') × 𝓓 .Hom (π₂ cd) (π₂ c'd')
+
+    Functor.F0 (Cone.arrows (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓})) 𝟎) = π₁
+    Functor.F1 (Cone.arrows (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓})) 𝟎) α = π₁ α
+
+    Functor.F0 (Cone.arrows (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓})) 𝟏) = π₂
+    Functor.F1 (Cone.arrows (HasLimit.lim (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓})) 𝟏) α = π₂ α
+
+    Functor.F0 (HasLimit.lim-initial (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓}) x) a = {!!}
+    Functor.F1 (HasLimit.lim-initial (HasProducts.hasLimit CATSHasProducts {𝓒} {𝓓}) x) = {!!}
+
+    CATSHasLimits : ∀ {𝓙} {𝓓 : Functor 𝓙 CATS} → HasLimit 𝓓
+    CATSHasLimits = {!!}
+
+    CATSTerminal : Terminal CATS
+    CATSTerminal = record {}
