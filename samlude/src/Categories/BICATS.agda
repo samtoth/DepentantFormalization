@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity --allow-unsolved-metas #-}
+{-# OPTIONS --cubical --cumulativity #-}
 module Categories.BICATS where
 
 open import Foundations.Prelude
@@ -53,5 +53,34 @@ module BicatMonad (M : Monad BICATS) where
   open Terminal {{...}}
 
 
-  >>= : ∀ {b : xOb} (a : Functor ⊤ (M .x .fst)) → xHom (xHom ? (M .F .F0 b))  M .F .F0 b
-  >>= = ?
+  _>>=_ : ∀ ⦃ _ : Terminal (M .x .fst) ⦄ {a b : xOb} → xHom ⊤ (M .F .F0 a) → xHom a (M .F .F0 b) →  xHom ⊤ (M .F .F0 b)
+  _>>=_ {b = b} a f = M .μ b x∘ (M .F .F1 f x∘ a)
+    where open IsCategory (M .x .snd) using () renaming (_∘_ to _x∘_)
+
+
+module Free {𝓒 : Ob} where
+  open import Categories.Diagram.Two
+
+  open HasCoproducts {{...}}
+  open HasProducts {{...}}
+
+  open Ops renaming (_∘_ to _b∘_)
+  open Monad
+
+  open Category (𝓒 .fst) renaming (Ob to xOb ; Hom to xHom)
+
+  private
+    instance
+      _ : IsCategory (𝓒 .fst)
+      _ = 𝓒 .snd
+
+
+  {-# TERMINATING #-}
+  FreeMonad :  ⦃ _ : HasCoproducts (𝓒 .fst) ⦄ (E : 𝓒 ↦ 𝓒) → Monad BICATS
+  Monad.x (FreeMonad _) = 𝓒
+  Monad.F (FreeMonad E) = theFunctor E
+    where theFunctor : (𝓒 ↦ 𝓒) → (𝓒 ↦ 𝓒)
+          theFunctor E = let freepart = (E ∘ FreeMonad E .F) in Id ＋ freepart
+
+  η (FreeMonad E) a = unsym (inj₀ {a = a})
+  μ (FreeMonad E) a = unsym ＋⟨ Id , sym (𝓒 .fst [ unsym inj₁ ∘ E .F1 (FreeMonad E .μ a) ]) ⟩

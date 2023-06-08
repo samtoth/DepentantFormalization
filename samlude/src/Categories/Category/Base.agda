@@ -33,6 +33,9 @@ cat [ f ∘ g ] = f ∘ g
 data Sym {ℓ} {A : Type ℓ} (R : A → A → Type ℓ') : A → A → Type (ℓ-max ℓ ℓ') where
   sym : ∀ {a b} → R a b → Sym R b a
 
+unsym : ∀ {A : Type ℓ} {R : A → A → Type ℓ'} {a b} → Sym {A = A} R a b → R b a
+unsym (sym x) = x
+
 _^op : Category ℓ ℓ' → Category ℓ (ℓ-max ℓ ℓ')
 Cat Ob Hom ^op = Cat Ob (Sym Hom)
 

@@ -5,11 +5,11 @@ open import Foundations.Prelude
 
 open import Categories.Category.Base
 
-data Id {ℓ} (A : Type ℓ) : A → A → Type ℓ where
+data Id {ℓ ℓ'} (A : Type ℓ) : A → A → Type (ℓ-max ℓ ℓ') where
   refl : ∀ {x : A} → Id A x x
 
 
-Discrete : ∀ {ℓ} → Type ℓ → Category ℓ ℓ
+Discrete : ∀ {ℓ ℓ'} → Type ℓ → Category ℓ (ℓ-max ℓ ℓ')
 Discrete x = Cat x (Id x)
 
 

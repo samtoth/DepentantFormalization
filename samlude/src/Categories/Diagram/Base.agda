@@ -13,8 +13,8 @@ module _ (𝓙 𝓒 : Category ℓ ℓ') where
   Diagram : Type (ℓ-suc (ℓ-max ℓ ℓ'))
   Diagram = Functor 𝓙 𝓒
 
-open import Categories.FUNCTORS
 open import Categories.Functor.Const
+open import Categories.NaturalTransformation
 
 module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  where
   open Category {{...}}
@@ -22,10 +22,11 @@ module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  whe
   open Functor {{...}}
 
 
+
   record Cone (𝓓 : Diagram 𝓙 𝓒) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
     field
       apex   : 𝓒 .Ob
-      arrows : F[ 𝓙 , 𝓒 ] [ Const apex , 𝓓 ]
+      arrows : NatTrans (Const apex) 𝓓
 
 
   Cones : (D : Diagram 𝓙 𝓒) → Category (ℓ-suc (ℓ-max ℓ ℓ')) (ℓ-suc (ℓ-max ℓ ℓ'))
