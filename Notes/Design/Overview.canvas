@@ -1,0 +1,13 @@
+{
+	"nodes":[
+		{"type":"file","file":"Design/The Core Language.md","id":"2de216f7c14705d0","x":0,"y":-620,"width":760,"height":420},
+		{"type":"file","file":"Design/Design - first pass.md","id":"78ba4ca0b17bdba7","x":-880,"y":-477,"width":538,"height":515},
+		{"id":"223dea1f817608c5","x":-180,"y":-100,"width":920,"height":400,"type":"file","file":"Design/The graphical-notational system.md"},
+		{"id":"fe3e7af05c0566ae","x":-1020,"y":260,"width":729,"height":523,"type":"file","file":"Design/UI UX.md"}
+	],
+	"edges":[
+		{"id":"918fa7c4bdfabe17","fromNode":"78ba4ca0b17bdba7","fromSide":"right","toNode":"2de216f7c14705d0","toSide":"left"},
+		{"id":"1409d04842070f26","fromNode":"78ba4ca0b17bdba7","fromSide":"right","toNode":"223dea1f817608c5","toSide":"left"},
+		{"id":"f2ed04fe555f0fda","fromNode":"78ba4ca0b17bdba7","fromSide":"bottom","toNode":"fe3e7af05c0566ae","toSide":"top"}
+	]
+}
