@@ -48,3 +48,4 @@ module _ {𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄ where
     catOp : IsCategory (𝓒 ^op)
     IsCategory.Id catOp = sym Id
     IsCategory._∘_ catOp (sym f) (sym g) = sym (g ∘ f)
+

@@ -3,43 +3,61 @@ module Spec where
 
 open import Foundations.Prelude
 open import Categories.Category
-open import Data.Nat renaming (Nat to ℕ)
-open import Data.Fin
+open import Categories.Category.Bicategory
+open import Categories.BICATS
+open import Categories.TYPE
+open import Categories.Functor
+
+open IsBicategory {{...}}
+-- open import Data.Nat renaming (Nat to ℕ)
+-- open import Data.Fin
 
 
--- A language spec is a family of types representing the label and the arrity of the term
-lang-spec : Type₁
-lang-spec = Type → Type
+data ℕ : Type where
+  zero : ℕ
+  suc : ℕ → ℕ
 
-⟦_⟧ : lang-spec → TYPE ↦ TYPE
-⟦_⟧ = ?
+postulate
+  Fin : ℕ → Type
 
-∅ = Fin 0
+{-# BUILTIN NATURAL ℕ #-}
 
-𝟙 = Fin 1
+module _ {ℓ} where
 
-𝟚 = Fin 2
-𝟛 = Fin 3
-𝟜 = Fin 4
+  -- A language spec is a family of types representing the label and the arrity of the term
+  lang-spec : ∀ {ℓ'} → Type (ℓ-suc (ℓ-max ℓ ℓ'))
+  lang-spec  {ℓ'} = Type ℓ' → Type ℓ
 
+  open Ops {E𝓒 = BICATS ℓ ℓ}
+  open Functor
 
-
-
-data Cosmos : Type ℓ where
-  pretype : ℕ → Cosmos
-  fibrant : ℕ → Cosmos
-  prop    : ℕ → Cosmos
-  strict  : ℕ → Cosmos
-  omega   : Cosmos
-
-data Pure : lang-spec where
-  var : ℕ → Pure ∅
-  lam : Pure 𝟙
-  pi  : Pure 𝟚
-  app : Pure 𝟚
+  ⟦_⟧ : ∀  {ℓ'} → lang-spec {ℓ'} → ({!!} ↦ {!!})
+  -- ⟦ F ⟧ .F0 x = ∀ {arr} (s : F arr) → (arr → x) → x
+  -- ⟦ F ⟧ .F1 = ?
 
 
-data Total : lang-spec where
-  sigma  : Total 𝟚
-  pair   : Total 𝟚
-  Σelim  : Total 𝟚
+  ∅ = Fin 0
+
+  𝟙 = Fin 1
+
+  𝟚 = Fin 2
+  𝟛 = Fin 3
+  𝟜 = Fin 4
+
+  -- data Cosmos {ℓ} : Type ℓ where
+  --   pretype : ℕ → Cosmos
+  --   fibrant : ℕ → Cosmos
+  --   prop    : ℕ → Cosmos
+  --   strict  : ℕ → Cosmos
+  --   omega   : Cosmos
+
+  -- data Pure : lang-spec {ℓ} where
+  --   var : ℕ → Pure ∅
+  --   lam : Pure 𝟙
+  --   pi  : Pure 𝟚
+  --   app : Pure 𝟚
+
+  -- data Total : lang-spec {ℓ-suc _} where
+  --   sigma  : Total 𝟚
+  --   pair   : Total 𝟚
+  --   Σelim  : Total 𝟚

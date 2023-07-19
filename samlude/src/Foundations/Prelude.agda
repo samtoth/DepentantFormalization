@@ -24,3 +24,6 @@ open import Agda.Primitive public
            ; Set   to Type
            ; Setω  to Typeω )
 open import Agda.Builtin.Sigma public
+
+Path : ∀ {ℓ} (A : Type ℓ) → A → A → Type ℓ
+Path A = PathP (λ _ → A)
