@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Data.Bool where
 
 open import Foundations.Prelude
@@ -18,6 +18,6 @@ open import Categories.Diagram.Zero
 open Initial {{...}}
 open Terminal {{...}}
 
-T : ∀ {ℓ} → Bool → Type ℓ
+T : Bool → Type
 T true  = ⊤
 T false = ⊥

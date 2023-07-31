@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Foundations.Prelude where
 
 open import Agda.Builtin.Cubical.Path public
@@ -27,3 +27,9 @@ open import Agda.Builtin.Sigma public
 
 Path : ∀ {ℓ} (A : Type ℓ) → A → A → Type ℓ
 Path A = PathP (λ _ → A)
+
+subst : ∀ {ℓ ℓ'} {A : Type ℓ} {x y} (P : A → Type ℓ') → Path A x y → P x → P y
+subst P eq x = transp (λ i → (P (eq i))) i0 x
+
+data Lift {ℓ} (A : Type ℓ)  (ℓ' : Level) : Type (ℓ-max ℓ ℓ') where
+ lift : A → Lift A ℓ'

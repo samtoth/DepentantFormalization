@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Categories.Diagram.Base where
 
 open import Foundations.Prelude
@@ -10,7 +10,7 @@ private
     ℓ ℓ' : Level
 
 module _ (𝓙 𝓒 : Category ℓ ℓ') where
-  Diagram : Type (ℓ-suc (ℓ-max ℓ ℓ'))
+  Diagram : Type (ℓ-max ℓ ℓ')
   Diagram = Functor 𝓙 𝓒
 
 open import Categories.Functor.Const
@@ -29,7 +29,7 @@ module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  whe
       arrows : NatTrans (Const apex) 𝓓
 
 
-  Cones : (D : Diagram 𝓙 𝓒) → Category (ℓ-suc (ℓ-max ℓ ℓ')) (ℓ-suc (ℓ-max ℓ ℓ'))
+  Cones : (D : Diagram 𝓙 𝓒) → Category (ℓ-suc (ℓ-max ℓ ℓ')) ℓ'
   Category.Ob (Cones D) = Cone D
   Category.Hom (Cones D) = λ C1 C2 → 𝓒 [ C1 .apex , C2 .apex ]
     where open Cone

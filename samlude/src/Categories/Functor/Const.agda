@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Categories.Functor.Const where
 
 open import Categories.Category

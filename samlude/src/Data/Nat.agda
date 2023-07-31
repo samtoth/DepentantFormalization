@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity --allow-unsolved-metas #-}
+{-# OPTIONS --cubical --allow-unsolved-metas #-}
 module Data.Nat where
 
 open import Foundations.Prelude

@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Categories.Diagram.Zero where
 
 open import Foundations.Prelude

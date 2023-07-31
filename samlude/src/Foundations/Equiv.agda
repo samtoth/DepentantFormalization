@@ -1,14 +1,12 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Foundations.Equiv where
 
 open import Foundations.Prelude
+open import Foundations.Homotopy
 
 
 fiber : ∀ {ℓ ℓ'} {A : Type ℓ} {B : Type ℓ'} (f : A → B) (y : B) → Type (ℓ-max ℓ ℓ')
 fiber {A = A} f y = Σ A \ x → f x ≡ y
-
-isContr : ∀ {ℓ} → Type ℓ → Type ℓ
-isContr {ℓ} A = Σ A (λ x → (∀ (y : A) → Path {ℓ} A x y))
 
 
 -- We make this a record so that isEquiv can be proved using

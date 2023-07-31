@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical  #-}
 module Categories.Category.Base where
 
 open import Foundations.Prelude
@@ -19,7 +19,7 @@ _[_,_] : (c : Category ℓ ℓ') → (a b : c .Ob) → Type ℓ'
 _[_,_] c = c .Hom
 
 
-record IsCategory (cat : Category ℓ ℓ') : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
+record IsCategory (cat : Category ℓ ℓ') : Type (ℓ-max ℓ ℓ') where
     field
         Id : ∀ {a : cat .Ob} → cat .Hom a a
         _∘_ : ∀ {a b c : cat .Ob} → cat .Hom b c → cat .Hom a b → cat .Hom a c

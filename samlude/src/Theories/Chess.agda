@@ -102,7 +102,7 @@ module PosPs where
 
   instance
     rfeq : Eq (Rank × File)
-    (rfeq Eq.≟ a) b = ?
+    (rfeq Eq.≟ a) b = {!!}
 
   [_:=_] : (Rank × File) → SquareData → PosP
   [ homePos := x ] pos d with homePos ≟ pos

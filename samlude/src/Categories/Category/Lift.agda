@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Categories.Category.Lift where
 
 open import Foundations.Prelude
@@ -6,9 +6,11 @@ open import Categories.Category.Base
 
 open import Categories.Functor
 
-Lift : ∀ {ℓ ℓ' ℓ'' ℓ'''} → Category ℓ ℓ' → Category (ℓ-max ℓ ℓ'') (ℓ-max ℓ' ℓ''')
-Lift (Cat o h) = Cat o (λ a b → h a b)
+LiftC : ∀ {ℓ ℓ'}  → Category ℓ ℓ' → (ℓ'' ℓ''' : Level) → Category (ℓ-max ℓ ℓ'') (ℓ-max ℓ' ℓ''')
 
-lift : ∀ {ℓ ℓ' ℓ'' ℓ'''} {𝓒 : Category ℓ ℓ'} → Functor 𝓒 (Lift {ℓ} {ℓ'} {ℓ''} {ℓ'''} 𝓒)
-Functor.F0 lift = λ x → x
-Functor.F1 lift = λ f → f
+Category.Ob (LiftC (Cat o h) ℓ ℓ') = Lift o ℓ
+Category.Hom (LiftC (Cat o h) ℓ ℓ') (lift x) (lift y) = Lift (h x y) ℓ'
+
+liftC : ∀ {ℓ ℓ' } {𝓒 : Category ℓ ℓ'} → {ℓ'' ℓ''' : Level} → Functor 𝓒 (LiftC 𝓒 ℓ'' ℓ''')
+Functor.F0 liftC x = lift x
+Functor.F1 liftC f = lift f

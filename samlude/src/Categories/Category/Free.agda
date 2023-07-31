@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical #-}
 module Categories.Category.Free where
 
 open import Foundations.Prelude
@@ -20,6 +20,6 @@ Free O H = Cat O (FreeHoms O H)
 
 
 instance
-  catFree : ∀ {Ob} {Homs} → IsCategory (Free Ob Homs)
+  catFree : ∀ {ℓ ℓ'} {Ob} {Homs} → IsCategory (Free {ℓ} {ℓ'} Ob Homs)
   IsCategory.Id catFree = FreeId
   (catFree IsCategory.∘ f) g = FreeComp f g

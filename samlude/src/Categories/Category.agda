@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity #-}
+{-# OPTIONS --cubical  #-}
 {-
 
   In spirit of this 'prelude' being more focussed writing programs than proofs,
