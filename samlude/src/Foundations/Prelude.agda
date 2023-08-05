@@ -33,3 +33,7 @@ subst P eq x = transp (λ i → (P (eq i))) i0 x
 
 data Lift {ℓ} (A : Type ℓ)  (ℓ' : Level) : Type (ℓ-max ℓ ℓ') where
  lift : A → Lift A ℓ'
+
+
+_∙_ : ∀ {ℓ} {A : Type ℓ} {x y z : A} → y ≡ z → x ≡ y → x ≡ z
+_∙_ {x = x} p q = λ i → hcomp (λ j → (λ { (i = i0) → x ; (i = i1) → p j  })) (q i)
