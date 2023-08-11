@@ -13,7 +13,11 @@ infix 2 _because_
 
 module _ {ℓ} where
 
-  open import Categories.Negation {𝓒 = TYPE ℓ}
+  open import Categories.Diagram.Zero
+  open Initial {{...}}
+
+  ¬_ :  Type ℓ → Type ℓ
+  ¬ P = P → (⊥ {𝓒 = TYPE ℓ})
 
   data Reflects (P : Type ℓ) : Bool → Type ℓ where
     ofʸ : ( p :   P) → Reflects P true

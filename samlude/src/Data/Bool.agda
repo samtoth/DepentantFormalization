@@ -21,3 +21,4 @@ open Terminal {{...}}
 T : Bool → Type
 T true  = ⊤
 T false = ⊥
+

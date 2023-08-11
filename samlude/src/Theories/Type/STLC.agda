@@ -2,223 +2,245 @@
 module Theories.Type.STLC where
 
 open import Foundations.Prelude
-open import Foundations.Equiv
-open import Foundations.Homotopy
 
-open import Categories.Category
+open import Foundations.Decidable
 open import Categories.TYPE
+open import Categories.Negation {𝓒 = TYPE ℓ-zero}
 open import Categories.Diagram.Zero
-
-open import Categories.Functor
-open import Categories.Functor.Good
-
-open Functor
-open IsCategory {{...}}
-open Good {{...}}
 
 open Terminal {{...}}
 open Initial {{...}}
 
-open import Categories.Diagram.Two
+data Ty : Type where
+  Bool : Ty
+  _⇒_  : Ty → Ty → Ty
 
-open HasProducts {{...}}
+encodeB : Ty → Type
+encodeB Bool = Ty
+encodeB (B ⇒ B') = ⊥
 
-Fam : ∀ {ℓ} → Category (ℓ-suc ℓ) ℓ
-Category.Ob (Fam {ℓ}) = Σ     (Type ℓ)
-                        λ X → X → (Type ℓ)
-Category.Hom Fam (I , A) (J , B) = Σ    (I → J)
-                                   λ f → ∀ {i : I} → A i → B (f i)
+_≟T_ : (A B : Ty) → Dec (A ≡ B)
+Bool ≟T Bool = yes (λ i → Bool)
+Bool ≟T (B ⇒ B₁) = no λ p → subst encodeB p Bool
+(A ⇒ A₁) ≟T Bool = no (λ p → subst encodeB (λ i → p (~ i)) Bool )
+(A ⇒ B) ≟T (A' ⇒ B') with A ≟T A' | B ≟T B'
+... | yes pA | yes pB = yes (λ i → pA i ⇒ pB i)
+... | yes pA | no ¬pB = no {!!}
+... | no ¬pA | yes pB = no {!!}
+... | no ¬pA | no ¬pB = no {!!}
 
-instance
-  FamCat : ∀ {ℓ} → IsCategory (Fam {ℓ})
-  IsCategory.Id FamCat = Id , Id
-  IsCategory._∘_ FamCat f g = (f .fst ∘ g .fst) , (f .snd ∘ g .snd)
+infixr 40 _⇒_
 
-record CwF (ℓ ℓ' : Level) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
-  field
-    𝓒 : Category ℓ ℓ'
-    {{𝓒cat}} : IsCategory 𝓒
+data Ctx : Type where
+  ε   : Ctx
+  _,_ : Ctx → Ty → Ctx
 
-  open Category 𝓒 renaming (Ob to Ctx ; Hom to Subst) public
+variable
+  Γ Δ Ψ Φ : Ctx
+  A B C : Ty
 
-  field
-    {{𝓒ter}} :  Terminal 𝓒
 
-  ⟨⟩ : ∀ {Γ} → Subst Γ (⊤ {ℓ})
-  ⟨⟩ = !
+data Term : Ctx → Ty → Type
 
-  field
-    𝕋 : Functor (𝓒 ^op) (Fam {ℓ})
+data Subst : Ctx → Ctx → Type
 
-  field
-    {{𝕋good}} : Good 𝕋
+variable
+  γ γ' : Subst Γ Δ
+  δ : Subst Δ Ψ
+  ψ : Subst Ψ Φ
 
+  a a' : Term Γ A
 
-  Ty : Ctx → Type ℓ
-  Ty Γ = 𝕋 .F0 Γ .fst
+data Subst where
+  SId   : Subst Γ Γ
+  SComp : Subst Δ Ψ → Subst Γ Δ → Subst Γ Ψ
 
-  _[_]ty : ∀ {Γ Δ} → Ty Γ → Subst Δ Γ → Ty Δ
-  _[_]ty A γ = 𝕋 .F1 (sym γ) .fst A
+  lid   : SComp SId γ ≡ γ
+  rid   : SComp γ SId ≡ γ
+  assoc : SComp γ (SComp δ ψ) ≡ SComp (SComp γ δ) ψ
 
-  Tm : (Γ : Ctx) → (A : Ty Γ) → Type ℓ
-  Tm Γ = 𝕋 .F0 Γ .snd
 
-  _[_] : ∀ {Γ Δ A} → Tm Γ A → (γ : Subst Δ Γ) → Tm Δ (A [ γ ]ty)
-  a [ γ ] = 𝕋 .F1 (sym γ) .snd a
+  ⟨⟩ : Subst Γ ε
+  ⟨⟩! : ∀ (x : Subst Γ ε) → x ≡ ⟨⟩
 
-  field
-    _∷_ : (Γ : Ctx) → (A : Ty Γ) → Ctx
+  ⟨_,_⟩ : Subst Γ Δ → Term Γ A → Subst Γ (Δ , A)
 
-    p : ∀ {Γ} {A} → Subst (Γ ∷ A) Γ
-    q : ∀ {Γ} {A} → Tm (Γ ∷ A) (A [ p ]ty)
+  p : Subst (Γ , A) Γ
+  p∘⟨-,-⟩ : ∀ {Γ Δ} {γ : Subst Δ Γ} {a : Term Δ A} → SComp p ⟨ γ , a ⟩ ≡ γ
 
-    ⟨_,_⟩     : ∀ {Γ Δ A} → (γ : Subst Δ Γ) → (a : Tm Γ A) → Subst Δ (Γ ∷ A)
 
-    p∘⟨-,-⟩   : ∀ {Γ Δ} {A : Ty Γ} {γ : Subst Δ Γ} {a : Tm Γ A} → p ∘ ⟨ γ , a ⟩ ≡ γ
 
-  -- sublem : ∀ {A B C} {f : B → C} {g : A → B} {a} → f (g a) ≡ (f ∘ g) a -- Holds definitionally
+  set : ∀ (p q : γ ≡ γ') → p ≡ q
 
-  lem : ∀ {Γ Δ Ψ} {A : Ty Γ} {γ : Subst Δ Γ} {δ : Subst Ψ Δ} → ((A [ γ ]ty) [ δ ]ty) ≡ (A [ γ ∘ δ ]ty)
-  lem {Γ} {Δ} {Ψ} {A} {γ} {δ} i = distrib ⦃ r = 𝕋good ⦄ {f = sym δ} {sym γ} (~ i) .fst A
+data Term where
+  q : Term (Γ , A) A
 
-  lem2 : ∀ {Γ Δ} {A : Ty Γ} {γ : Subst Δ Γ} {a : Tm Γ A} → Path (Ty Δ) ((A [ p ]ty) [ ⟨ γ , a ⟩ ]ty) (A [ γ ]ty)
-  lem2 {Γ} {Δ} {A} {γ} {a} = (λ i → A [ p∘⟨-,-⟩ {γ = γ} {a} i ]ty) ∙ lem
+  _[_] : Term Γ A → Subst Δ Γ → Term Δ A
 
-  field
-    q[⟨-,-⟩]  : ∀ {Γ Δ} {A : Ty Γ} {γ : Subst Δ Γ} {a : Tm Γ A} → PathP (λ i → Tm Δ (lem2 {γ = γ} {a} i)) (q [ ⟨ γ , a ⟩ ]) (a [ γ ])
+  [][] : (a [ γ ]) [ δ ] ≡ a [ SComp γ δ ]
+  [Id] : a [ SId ] ≡ a
 
-open import Data.Nat
+  q[⟨-,-⟩] : q [ ⟨ γ , a ⟩ ] ≡ a [ γ ]
 
-record UCwF (ℓ ℓ' : Level) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
-  field
-    cwf : CwF ℓ ℓ'
 
-  open CwF cwf public
+  lam : Term (Γ , A) B → Term Γ (A ⇒ B)
+  app : Term Γ (A ⇒ B) → Term Γ A → Term Γ B
 
-  field
-    Tycontr : ∀ {Γ} → isContr (Ty Γ)
+  β   : (bod : Term (Γ , A) B) → (a : Term Γ A) → app (lam bod) a ≡ bod [ ⟨ SId , a ⟩ ]
+  η   : (f : Term Γ (A ⇒ B)) → f ≡ lam (app (f [ p ]) q)
 
-  * : ∀ {Γ} → Ty Γ
-  * = Tycontr .fst
+  true false : Term Γ Bool
 
-  subable : ∀ {Γ : Ctx} (a b : Ty Γ) → a ≡ b
-  subable a b = trust
-    where postulate trust : a ≡ b
+  if_then_else : Term Γ Bool → Term Γ A → Term Γ A → Term Γ A
 
-  extend : ∀ {Γ} → Tm Γ * → Subst Γ (Γ ∷ *)
-  extend {Γ} a = transp (λ i → Subst Γ (Γ ∷ subable {Γ} * * i)) i0 ⟨ Id , a ⟩
+  ite-true  : if true then a else a' ≡ a
+  ite-false : if false then a else a' ≡ a'
 
-  _[_]* : ∀ {Γ Δ} → Tm Γ * → (γ : Subst Δ Γ) → Tm Δ *
-  _[_]* {Γ} {Δ} x γ = transp (λ i → Tm Δ (subable (* [ γ ]ty) * i)) i0 (x [ γ ])
+module examples where
+  not : Term ε (Bool ⇒ Bool)
+  not = lam (if q then false else true)
 
-  q* : ∀ {Γ} → Tm (Γ ∷ *) *
-  q* {Γ} = transp (λ i → Tm (Γ ∷ *) (subable (* [ p ]ty) * i)) i0 q
+  nand : Term ε (Bool ⇒ Bool ⇒ Bool)
+  nand = lam (if q then lam (if q then false else true) else (lam true))
 
-record ƛ-UCwF (ℓ ℓ' : Level) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
-  field
-    ucwf : UCwF ℓ ℓ'
+data ValSort : Type where Ne Nf : ValSort
 
-  open UCwF ucwf public
+variable V : ValSort
 
-  field
-    lam : ∀ {Γ} → Tm (Γ ∷ *) * → Tm Γ *
-    app : ∀ {n} → Tm n * → Tm n * → Tm n *
+data Val : ValSort → Ctx → Ty → Type where
+  -- Terms in Normal form
+  ne   : Val Ne Γ A → Val Nf Γ A
+  lam  : Val Nf (Γ , A) B → Val Nf Γ (A ⇒ B)
+  true false : Val Nf Γ Bool
+
+  -- Neutral terms (terms that are stuck)
+  app  : Val Ne Γ (A ⇒ B) → Val Nf Γ A → Val Ne Γ B
+  wk   : Val Ne Γ A → Val Ne (Γ , B) A
+  q    : Val Ne (Γ , A) A
+  if_t_e : Val Ne Γ Bool → Val Nf Γ A → Val Nf Γ A → Val Ne Γ A
 
+-- Embedding Vals into Terms -----------------------
+
+⌜_⌝ : Val V Γ A → Term Γ A
 
+-- normals
 
-  field
-    -- subApp : ...
-    -- subLam : ...
+⌜ ne x ⌝ = ⌜ x ⌝
+⌜ lam x ⌝ = lam ⌜ x ⌝
+⌜ true ⌝ = true
+⌜ false ⌝ = false
 
-    β : ∀ {n} {f : Tm (n ∷ *) *} {a : Tm n *} → Path (Tm n *) (app (lam f) a) (f [ extend a ]*)
-    η : ∀ {Γ} {t : Tm Γ *} → Path (Tm Γ *) (lam (app (t [ p ]*) q*)) t
+-- neutrals
 
+⌜ app f x ⌝ = app ⌜ f ⌝ ⌜ x ⌝
+⌜ wk x ⌝ = ⌜ x ⌝ [ p ]
+⌜ q ⌝ = q
+⌜ if cond t a e b ⌝ = if ⌜ cond ⌝ then ⌜ a ⌝ else ⌜ b ⌝
 
-module Initial-ƛUCwF where
-  open Category
+--------------------------------------------------
 
-  open import Categories.Category.Free
-  open import Categories.Diagram.Base
-  open Limit
+lemma : ∀ {a b : Val Ne Γ A} → ne a ≡ ne b → a ≡ b
+lemma P = {!!}
 
-  data Term : ℕ → Type
-  data Subst : ℕ → ℕ → Type
+_≟_ : ∀ (a b : Val V Γ A) → Dec (a ≡ b)
 
-  variable
-    m n k : ℕ
+-- normals --------------------------------------------------------------------
 
-  PreSubsts : Category ℓ-zero ℓ-zero
-  PreSubsts = Free ℕ Subst
+encodeNe : Val Nf Γ A → Type
+encodeNe {Γ} {A} (ne _) = Val Ne Γ A
+encodeNe (lam _) = ⊥
+encodeNe true = ⊥
+encodeNe false = ⊥
 
-  data SubstsLaws : ℕ → ℕ → Type
+encodeTr : Val Nf Γ Bool → Type
+encodeTr (ne x) = ⊥
+encodeTr (true {Γ}) = Val Nf Γ Bool
+encodeTr false = ⊥
 
-  Substs : Category ℓ-zero ℓ-zero
-  Substs = Cat ℕ SubstsLaws
+encodeF : Val Nf Γ Bool → Type
+encodeF (ne x) = ⊥
+encodeF true = ⊥
+encodeF (false {Γ}) = Val Nf Γ Bool
 
+encodeApp : Val Ne Γ A → Type
+encodeApp (app {Γ} {A} {A'} f a) = Val Nf Γ A
+encodeApp (wk x) = ⊥
+encodeApp q = ⊥
+encodeApp (if x t x₁ e x₂) = ⊥
 
+encodeWk : Val Ne Γ A → Type
+encodeWk (app _ _) = ⊥
+encodeWk (wk {Γ} {A} _) = Val Ne Γ A
+encodeWk q = ⊥
+encodeWk (if _ t _ e _) = ⊥
 
-  data PreTerm : ℕ → Type where
-    q    : PreTerm (suc n)
-    _[_] : Term n → Substs .Hom m n → PreTerm m
-    lam  : Term (suc n) → PreTerm n
-    app  : Term n → Term n → PreTerm n
+encodeITE : Val Ne Γ A → Type
+encodeITE (app _ _) = ⊥
+encodeITE (wk _) = ⊥
+encodeITE q = ⊥
+encodeITE (if_t_e {Γ} _ _ _) = Val Ne Γ Bool
 
+_≟_ {V = Nf} (ne a) (ne b) with a ≟ b
+... | yes P = yes (λ i → ne (P i))
+... | no ¬P = no λ p → ¬P (lemma p)
+_≟_ {V = Nf} (ne x) (lam _) = no λ p → subst encodeNe p x
+_≟_ {V = Nf} (ne x) true = no λ p → subst encodeNe p x
+_≟_ {V = Nf} (ne x) false = no λ p → subst encodeNe p x
 
-  data Subst where
-    ⟨⟩ : Subst n zero
-    ⟨_,_⟩ : Substs .Hom m n → Term n → Subst m (suc n)
-    p   : Subst (suc n) n
+_≟_ {V = Nf} (lam a) (lam b) with a ≟ b
+... | yes P = yes (λ i → lam (P i))
+... | no ¬P = no λ p → {!!}
+_≟_ {V = Nf} (lam a) (ne _) = no λ p → subst encode p a
+  where encode : Val Nf Γ (A ⇒ B) → Type
+        encode (ne x) = ⊥
+        encode (lam {Γ} {A} {B} x) = Val Nf (Γ , A) B
 
-    -- p∘⟨-,-⟩ : ∀ {Γ Δ} {γ : Subst Δ Γ} {a : Term Γ} → {!Special p ∘ Special ⟨ Special γ , a ⟩ ≡ Special γ!} -- p ∘ ⟨ Special γ , a ⟩ ≡ γ
 
-  data SubstsLaws where
-    sub : ∀ {m n} → PreSubsts .Hom m n → SubstsLaws m n
+_≟_ {V = Nf} true true = yes (λ i → true)
+_≟_ {V = Nf} true (ne _) = no λ p → subst encodeTr p true
+_≟_ {V = Nf} true false = no λ p → subst encodeTr p true
 
-    p∘⟨-,-⟩ : ∀ {Γ Δ} {γ : Substs .Hom Δ Γ} {a : Term Γ} → sub (Special p ∘ Special ⟨ γ , a ⟩) ≡ γ
+_≟_ {V = Nf} false false = yes (λ i → false)
+_≟_ {V = Nf} false (ne _) = no λ p → subst encodeF p false
+_≟_ {V = Nf} false true = no λ p → subst encodeF p false
 
-  instance
-    SubstsCat : IsCategory Substs
-    IsCategory.Id SubstsCat = sub Id
-    IsCategory._∘_ SubstsCat (sub f) (sub g) = sub (f ∘ g)
+-- neutrals -------------------------------------------------------------------
 
-  data Term where
-    t : ∀ {n} → PreTerm n → Term n
+_≟_ {V = Ne} (app {Γ} {A} f a) (app {Γ} {A'} f' a') with A ≟T A'
+... | no ¬p0  = no (λ x → {!!})
+... | yes p0  = {!!}
+_≟_ {V = Ne} (app _ a) (wk _) = no (λ p → subst encodeApp p a )
+_≟_ {V = Ne} (app _ a) q = no (λ p → subst encodeApp p a)
+_≟_ {V = Ne} (app _ a) (if b t b₁ e b₂) = no (λ p → subst encodeApp p a)
 
-    q[⟨-,-⟩] : ∀ {Γ Δ} {γ : Substs .Hom Δ Γ} {a : Term Γ} → Path (Term Δ) (t ((t q) [ sub (Special ⟨ γ , a ⟩) ])) (t (a [ γ ]))
 
-    -[Id] : ∀ {Γ} {a : Term Γ} → Path (Term Γ) (t ( a [ sub Id ])) a
-    -[][] : ∀ {Γ Δ Ψ} {γ : Substs .Hom Δ Γ} {δ : Substs .Hom Ψ Δ} {a : Term Γ} → Path (Term Ψ) (t ((t (a [ γ ])) [ δ ])) (t (a [ (γ ∘ δ) ]))
+wk x ≟ wk y with x ≟ y
+... | yes P = yes (λ i → wk (P i))
+... | no ¬P = no {!!}
 
+wk x ≟ app _ _ = no (λ p → subst encodeWk p x)
+wk x ≟ q = no (λ p → subst encodeWk p x)
+wk x ≟ if _ t _ e _ = no (λ p → subst encodeWk p x)
 
-  instance
-    SubstsTerminal : Terminal Substs
-    HasLimit.lim (Terminal.haslim SubstsTerminal) = record { apex = zero ; arrows = λ ()}
-    HasLimit.lim-initial (Terminal.haslim SubstsTerminal) x = sub (Special ⟨⟩)
+_≟_ q b = {!!}
 
+if c t _ e _ ≟ app _ _ = no (λ p → subst encodeITE p c)
+if c t _ e _ ≟ wk _ = no (λ p → subst encodeITE p c)
+if c t _ e _ ≟ q = no (λ p → subst encodeITE p c)
+if c t tr e f ≟ if c' t tr' e f' = {!!}
 
-  T : Functor (Substs ^op) Fam
-  T = swapOp' (record { F0 = λ n → ⊤ , (λ _ → Term n)
-                      ; F1 = λ γ → sym ( (λ x → x) , (λ x → t (x [ γ ])))
-                      })
 
-  Tgood : Good T
-  Good.id Tgood = λ i → (λ x → x) , λ x → -[Id] i
-  Good.distrib Tgood {f = f} {g} i = {!!}
 
-  lamcwf : ƛ-UCwF ℓ-zero ℓ-zero
-  CwF.𝓒 (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = Substs
-  CwF.𝓒cat (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = _
-  CwF.𝓒ter (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = SubstsTerminal
-  CwF.𝕋 (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = T
-  CwF.𝕋good (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = Tgood
-  CwF._∷_ (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = λ Γ _ → suc Γ
-  CwF.p (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = sub (Special p)
-  CwF.q (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = t q
-  CwF.⟨_,_⟩ (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = λ γ a → sub (Special ⟨ γ , a ⟩)
-  CwF.p∘⟨-,-⟩ (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = p∘⟨-,-⟩
-  CwF.q[⟨-,-⟩] (UCwF.cwf (ƛ-UCwF.ucwf lamcwf)) = q[⟨-,-⟩]
-  UCwF.Tycontr (ƛ-UCwF.ucwf lamcwf) = {!!} -- terminal TYPE is contr
-  ƛ-UCwF.lam lamcwf = t ∘ lam
-  ƛ-UCwF.app lamcwf = λ f x → t (app f x)
-  ƛ-UCwF.β lamcwf = {!!}
-  ƛ-UCwF.η lamcwf = {!!}
+-- Normalization statements ---------------------------------------------------
+
+norm : Term Γ A → Val Nf Γ A
+norm = {!!}
+
+complete : ∀ {t : Term Γ A} → t ≡ ⌜ norm t ⌝
+complete = {!!}
+
+sound : ∀ (t t' : Term Γ A) → t ≡ t' → norm t ≡ norm t'
+sound = {!!}
+
+stable : (n : Val Nf Γ A) → norm ⌜ n ⌝ ≡ n
+stable = {!!}
