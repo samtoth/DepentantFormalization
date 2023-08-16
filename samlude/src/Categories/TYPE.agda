@@ -28,10 +28,9 @@ module _ {ℓ : Level} where
   open Limit
   open Cone
 
+  data Empty : Type where
 
   instance
-
-
     open Category
     open Functor
 
@@ -46,14 +45,21 @@ module _ {ℓ : Level} where
     HasLimit.lim-initial TYPECoComplete = {!!}
 
     TYPEInitial : Initial (TYPE ℓ)
-    Initial.hascolim TYPEInitial = {!!}
+    HasLimit.lim (Initial.hascolim TYPEInitial) = record { apex = Lift Empty ℓ ; arrows = λ () }
+    HasLimit.lim-initial (Initial.hascolim TYPEInitial) = λ x → sym (λ { (lift ())})
 
     TYPETerminal : Terminal (TYPE ℓ)
-    Terminal.haslim TYPETerminal = {!!}
+    HasLimit.lim (Terminal.haslim TYPETerminal) = {!!}
+    HasLimit.lim-initial (Terminal.haslim TYPETerminal) record { apex = apex ; arrows = arrows } x = {!!}
 
     TYPEProducts : HasProducts (TYPE ℓ)
-    HasProducts.hasLimit TYPEProducts = {!TYPEComplete!}
+    apex (HasLimit.lim (HasProducts.hasLimit TYPEProducts {A} {B}) ) = Σ A (λ _ → B)
+    arrows (HasLimit.lim (HasProducts.hasLimit TYPEProducts)) (lift 𝟎) = fst
+    arrows (HasLimit.lim (HasProducts.hasLimit TYPEProducts)) (lift 𝟏) = snd
+    HasLimit.lim-initial (HasProducts.hasLimit TYPEProducts) cone ap = {!!} -- cone .arrows (lift 𝟎) ap , cone .arrows (lift 𝟏) ap
 
+    postulate
+      TYPEProperProd : ProperLimit (TYPEProducts .HasProducts.hasLimit)
 
     TYPECoProducts : HasCoproducts (TYPE ℓ)
     HasCoproducts.hasColim TYPECoProducts = {!TYPECoComplete!}

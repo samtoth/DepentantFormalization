@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical #-}
+{-# OPTIONS --cubical --allow-unsolved-metas #-}
 module Categories.Diagram.Two where
 
 open import Foundations.Prelude
@@ -8,6 +8,7 @@ open import Categories.Category.Discrete renaming (Id to Strict)
 open import Categories.Category.Lift
 open import Categories.Functor
 open import Categories.Diagram.Base
+open import Categories.NaturalTransformation
 
 
 data 𝟚 : Type where
@@ -37,7 +38,6 @@ record HasProducts {ℓ ℓ'} (𝓒 : Category ℓ ℓ') ⦃ 𝓒cat : IsCategor
   field
     {{hasLimit}} : ∀ {a b : Category.Ob 𝓒} → HasLimit (ProdDi {ℓ} { 𝓒' = 𝓒} {{𝓒cat}} a b)
 
-
 module _ {ℓ ℓ'} {𝓒 : Category ℓ ℓ'} ⦃ 𝓒cat : IsCategory 𝓒 ⦄ ⦃ Prods : HasProducts {ℓ} 𝓒 ⦄ where
 
   open Category 𝓒
@@ -61,6 +61,13 @@ module _ {ℓ ℓ'} {𝓒 : Category ℓ ℓ'} ⦃ 𝓒cat : IsCategory 𝓒 ⦄
 
   ×⟨_,_⟩ : {a b P : Ob} → Hom P a → Hom P b → Hom P (a × b)
   ×⟨ f , g ⟩ = lim-initial (record { apex = _ ; arrows = λ { (lift 𝟎) → f ; (lift 𝟏) → g} })
+
+  postulate
+    π₁∘× : ∀ {a b P} {{proper : ProperLimit (hasLimit {a} {b})}}  {f : Hom P a} {g : Hom P b} → π₁ ∘ ×⟨ f , g ⟩ ≡ f
+  -- π₁∘× {{proper}} = {!!}
+  --   where open ProperLimit proper
+  --         open ProperCone
+  --         open IsNatural
 
 record HasCoproducts {ℓ ℓ'} (𝓒 : Category ℓ ℓ') ⦃ 𝓒cat : IsCategory 𝓒 ⦄ : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
 

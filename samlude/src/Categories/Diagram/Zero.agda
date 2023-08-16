@@ -64,6 +64,9 @@ record Initial (𝓒 : Category ℓ ℓ') ⦃ ccat : IsCategory 𝓒 ⦄  : Type
   ¡ :  {x : Ob} → Hom x ⊥
   ¡ {x = x} = lim-initial (record { apex = x ; arrows = λ () })
 
+  ¡' : ∀ {x} → 𝓒 [ ⊥ , x ]
+  ¡' = unsym ¡
+
 open Terminal {{...}}
 open Initial {{...}}
 

@@ -34,6 +34,12 @@ module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  whe
   Category.Hom (Cones D) = λ C1 C2 → 𝓒 [ C1 .apex , C2 .apex ]
     where open Cone
 
+  record ProperCone {D} (c : Cone D) : Type (ℓ-max ℓ ℓ') where
+    open Cone
+
+    field
+     arrowNat : IsNatural {F = Const (c .apex)} {D} (c .arrows)
+
   instance
     ConesCat :  {D : Diagram 𝓙 𝓒} → IsCategory (Cones D)
     IsCategory.Id ConesCat = Id
@@ -43,3 +49,9 @@ module Limit {𝓙 𝓒 : Category ℓ ℓ'} ⦃ ccat : IsCategory 𝓒 ⦄  whe
     field
       lim          : Cones D .Ob
       lim-initial  : ∀ (x : Cones D .Ob) →  Cones D [ x , lim ]
+
+  record ProperLimit {D} (l : HasLimit D) : Type (ℓ-suc (ℓ-max ℓ ℓ')) where
+    open HasLimit l
+    field
+      properCone : ∀ {x : Cones D .Ob} → ProperCone x
+      lim∃! : ∀ {x : Cones D .Ob} → (∀ (f : Cones D [ x , lim ]) → lim-initial x ≡ f)

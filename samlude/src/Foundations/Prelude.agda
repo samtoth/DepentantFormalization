@@ -37,3 +37,27 @@ data Lift {ℓ} (A : Type ℓ)  (ℓ' : Level) : Type (ℓ-max ℓ ℓ') where
 
 _∙_ : ∀ {ℓ} {A : Type ℓ} {x y z : A} → y ≡ z → x ≡ y → x ≡ z
 _∙_ {x = x} p q = λ i → hcomp (λ j → (λ { (i = i0) → x ; (i = i1) → p j  })) (q i)
+
+private
+  variable
+    ℓ ℓ' ℓ'' : Level
+    A : Type ℓ
+    B : A → Type ℓ
+    x y z w : A
+
+cong : (f : (a : A) → B a) (p : x ≡ y) →
+       PathP (λ i → B (p i)) (f x) (f y)
+cong f p i = f (p i)
+{-# INLINE cong #-}
+
+cong₂ : {C : (a : A) → (b : B a) → Type ℓ} →
+        (f : (a : A) → (b : B a) → C a b) →
+        (p : x ≡ y) →
+        {u : B x} {v : B y} (q : PathP (λ i → B (p i)) u v) →
+        PathP (λ i → C (p i) (q i)) (f x u) (f y v)
+cong₂ f p q i = f (p i) (q i)
+{-# INLINE cong₂ #-}
+
+
+refl : ∀ {ℓ} → {A : Type ℓ} → {a : A} → a ≡ a
+refl {a = a} i = a

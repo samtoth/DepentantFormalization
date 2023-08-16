@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical --cumulativity --allow-unsolved-metas #-}
+{-# OPTIONS --cubical --allow-unsolved-metas #-}
 module Data.Fin where
 
 open import Foundations.Prelude
