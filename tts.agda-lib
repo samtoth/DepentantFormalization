@@ -1,0 +1,14 @@
+name: tts
+include:
+  src/
+depend:
+  1lab
+
+flags:
+  --cubical
+  --no-load-primitives
+  --postfix-projections
+  --rewriting
+  --guardedness
+  --two-level
+  -W noUnsupportedIndexedMatch

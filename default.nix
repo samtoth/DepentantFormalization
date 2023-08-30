@@ -1,18 +1,20 @@
 { nixpkgs ? <nixpkgs> }:
 with (import nixpkgs {});
+let
+  onelab = import ./nix/1lab-master.nix;
+in
 agdaPackages.mkDerivation {
   version = "1.0";
-  pname = "samlude";
+  pname = "tts";
   
-  src = ./src/..;
+  src = ./src;
 
 
-  buildInputs = [
+  buildInputs = [ onelab
   ];
 
   preBuild = ''
-	echo "{-# OPTIONS --cubical --cumulativity #-}
-module Everything where" > Everything.agda
+	echo "module Everything where" > Everything.agda
         find src/ -name '*.agda' | sed -e 's/src\///;s/\//./g;s/\.agda$//;s/^/import /' >> Everything.agda
         
   '';

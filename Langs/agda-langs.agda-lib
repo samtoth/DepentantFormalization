@@ -1,5 +1,0 @@
-name: agda-langs
-include:
-  src/
-depend:
-  samlude
