@@ -1,76 +1,63 @@
 module Theories.STLC.Norm where
 
-open import Cat.Prelude
+open import 1Lab.Prelude hiding (⌜_⌝ ; _<*>_)
+open import Cat.Base
 open import Cat.Functor.Base
+open import Cat.Diagram.Initial
+open _=>_
+open Functor
 
-open import Theories.STLC.Syntax
+open import Theories.STLC.HIITctx
 open import Theories.STLC.Vals
+open import Theories.STLC.Model
+open import Theories.STLC.Ctxs
+open import Cat.Displayed.Total
 
--- Types are mapped to presheafs over the context
+-- First the naive normalisation function
 
+ToNorm : STLC-Functor ιSTLC-model Model.NF
+ToNorm = ιSTLC-is-initial .Initial.has⊥ (Model.NF , Model.NFLam , Model.NFBool) .is-contr.centre .Total-hom.hom
 
-
-TyPS : Ty → (PSh lzero Ctxs) .Precategory.Ob
-TyPS 𝔹 .Functor.F₀ Γ = el (Val Nf Γ 𝔹) {! nf-set  !}
-TyPS (x ⇒ x₁) .Functor.F₀ = {!   !}
-
-TyPS x .Functor.F₁ = {!   !}
-TyPS x .Functor.F-id = {!   !}
-TyPS x .Functor.F-∘ = {!   !}
-
-{-
-  where
-    fOb : Ty → Ctx → Type
-    fOb Bool Γ = Val Nf Γ Bool
-    fOb (A ⇒ B) Γ = ∀ {Δ} → Subst Δ Γ → TyPS A .F0 Δ → TyPS B .F0 Δ
+PresTy : ∀ (A) → ToNorm .STLC-Functor.Fty A ≡ A
+PresTy 𝔹 = refl
+PresTy (A ⇒ B) = ap₂ _⇒_ (PresTy A) (PresTy B)
 
 
-    fHom : ∀ {Γ Δ : Ctx} → (A : Ty) → Subst Δ Γ → fOb A Γ → fOb A Δ
-    fHom A SId = λ v → v
-    fHom A (SComp γ δ) = TYPE ℓ-zero [ fHom A δ ∘ fHom A γ ]
-    fHom A (lid {γ = γ} i) v = fHom A γ v
-    fHom A (rid {γ = γ} i) v = fHom A γ v
+PresCtx : ∀ (Γ) → ToNorm .STLC-Functor.F .F₀ Γ ≡ Γ
+PresCtx (ε) = refl
+PresCtx (Γ , x) = λ i → (PresCtx Γ i) , (PresTy x i)
 
-    fHom A (assoc {γ = γ} {δ = δ} {ψ = ψ} i) v = fHom A ψ (fHom A δ (fHom A γ v))
+toNorm : ∀ {Γ A} → ιSTLC Tm (Γ , A) → Val Nf Γ A
+toNorm {Γ} {A} = transp (λ i → Val Nf (PresCtx Γ i) (PresTy A i)) i0 ∘ ToNorm .STLC-Functor.F𝕋 .η Γ
 
-    fHom {Δ = ε} A (⟨⟩ {.ε}) v = v
+toNorm' : ∀ {Γ A} → ιSTLC Tm (Γ , A) → Val Nf (ToNorm .STLC-Functor.F .F₀ Γ) (ToNorm .STLC-Functor.Fty A)
+toNorm' {Γ} {A} = ToNorm .STLC-Functor.F𝕋 .η Γ
 
-    fHom {Δ = Γ , x} Bool (⟨⟩ {.(Γ , x)}) v = wk (fHom Bool ⟨⟩ v)
-    fHom {Δ = Γ , x} (A ⇒ B) (⟨⟩ {.(Γ , x)}) v = λ δ → v ⟨⟩
+nf' : ∀ {Γ A} → ιSTLC Tm (Γ , A) → ιSTLC Tm (_ , _)
+nf' = ⌜_⌝ ∘ toNorm'
 
-    fHom A (⟨⟩! γ i) v = {!!}
+nf⁰ : ∀ {Γ A} → ιSTLC Tm (Γ , A) → ιSTLC Tm (Γ , A)
+nf⁰ = ⌜_⌝ ∘ toNorm
 
-    fHom Bool ⟨ γ , x ⟩ (ne (app v v₁)) = {!n!}
-    fHom Bool ⟨ γ , x ⟩ (ne q) = {!!}
-    fHom Bool ⟨ γ , x ⟩ (ne (if v then v₁ else v₂)) = {!!}
-    fHom Bool ⟨ γ , x ⟩ (wk v) = {!wk!}
-    fHom Bool ⟨ γ , x ⟩ true = true
-    fHom Bool ⟨ γ , x ⟩ false = false
+test : ∀ {A B} {f : ιSTLC Tm (ε , A ⇒ B)} → nf⁰ {ε} (lam (app f)) ≡ nf⁰ f
+test = {!  refl !}
 
-    fHom (A ⇒ A₁) ⟨ γ , x ⟩ v = {!!}
+idfun : ∀ {A} → ιSTLC Tm (Γ , A ⇒ A)
+idfun = lam ιvz
 
-    fHom A p v = {!!}
-    fHom A (p∘⟨-,-⟩ i) v = {!!}
-    fHom A (set p₁ q₁ i i₁) v = {!!}
+_<*>_ : ιSTLC Tm (Γ , A ⇒ B) → ιSTLC Tm (Γ , A) → ιSTLC Tm (Γ , B)
+f <*> x = app f [ ⟨ ιSTLC.Id , x ⟩ ]
 
--- F0 (TyPS Bool) Γ = Val Nf Γ Bool
+infixl 25 _<*>_
 
--- F1 (TyPS Bool) (sym SId) v = v
--- F1 (TyPS Bool) (sym (SComp γ δ)) = (TYPE ℓ-zero) [ TyPS Bool .F1 (sym δ) ∘ TyPS Bool .F1 (sym γ) ]
--- F1 (TyPS Bool) (sym (lid i)) v = {!!}
--- F1 (TyPS Bool) (sym (rid i)) v = {!!}
--- F1 (TyPS Bool) (sym (assoc i)) v = {!!}
--- F1 (TyPS Bool) (sym ⟨⟩) v = {!!}
--- F1 (TyPS Bool) (sym (⟨⟩! γ i)) v = {!!}
--- F1 (TyPS Bool) (sym ⟨ γ , x ⟩) v = {!!}
--- F1 (TyPS Bool) (sym p) v = {!!}
--- F1 (TyPS Bool) (sym (p∘⟨-,-⟩ i)) v = {!!}
--- F1 (TyPS Bool) (sym (set p₁ q₁ i i₁)) v = {!!}
+lamapp : ∀ {A B} (f : ιSTLC Tm (ε , A ⇒ B)) → ιSTLC Tm (ε , A ⇒ B)
+lamapp f = lam (app f)
 
--- F0 (TyPS (A ⇒ B)) Γ = ∀ {Δ} → Subst Δ Γ → TyPS A .F0 Δ → TyPS B .F0 Δ
--- F1 (TyPS (A ⇒ B)) = {!!}
+and : ιSTLC Tm (Γ , (𝔹 ⇒ 𝔹 ⇒ 𝔹))
+and = lam (elim𝔹 ιvz idfun (lam false))
 
+testAnd : nf'  {Γ , 𝔹} (and <*> false <*> ιvz)  ≡ false
+testAnd = refl
 
-norm : Term Γ A → Val Nf Γ A
-norm x = {!!}
--}
+not : ιSTLC Tm (Γ , (𝔹 ⇒ 𝔹))
+not = lam (elim𝔹 ιvz false true)

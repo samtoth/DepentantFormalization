@@ -20,6 +20,8 @@ open import Cat.Instances.Slice
 open import Cat.Bi.Base
 open import Cat.Displayed.Base
 
+open import Theories.STLC.NatHelp
+
 open _=>_
 open _≅_
 
@@ -30,7 +32,7 @@ record STLC {ℓ ℓ'} : Type (lsuc (ℓ ⊔ ℓ')) where
   field
     𝓒-strict : is-strict 𝓒
 
-  open Precategory 𝓒 public renaming (Ob to Ctx ; Hom to Sub ; _∘_ to _∘ᶜ_) using ()
+  open Precategory 𝓒 public renaming (Ob to Ctx ; Hom to Sub ; _∘_ to _∘ᶜ_ ; id to Cid) using ()
   open Cat.Functor.Hom 𝓒
   open Binary-products (PSh ℓ' 𝓒) (PSh-products {κ = ℓ'} {C = 𝓒}) renaming (⟨_,_⟩ to ×⟨_,_⟩)
   open Cat.Functor.Hom.Representable {C = 𝓒} public
@@ -59,6 +61,9 @@ record STLC {ℓ ℓ'} : Type (lsuc (ℓ ⊔ ℓ')) where
 
   _[_] : ∀ {A Γ Δ} → Tm A Δ → Sub Γ Δ → Tm A Γ
   _[_] {A} t γ = 𝕋 A .F₁ γ t
+
+  _[Id] : ∀ {A Γ} → (t : Tm A Γ) → t [ Cid ] ≡ t
+  t [Id] = λ i → 𝕋 _ .F-id i t
 
   field
     extend : Ty → Functor 𝓒 𝓒
@@ -108,7 +113,9 @@ record STLC-Functor {ℓ ℓ'} (𝓜 𝓝 : STLC {ℓ} {ℓ'}) : Type (lsuc (ℓ
   field 
     F𝕋 : ∀ {A} → 𝓜 .𝕋 A => 𝓝 .𝕋 (Fty A) F∘ Functor.op F
 
-    -- extend-natural : ∀ {A : 𝓜 .Ty} → F F∘ (𝓜 .extend A) ≡ 𝓝 .extend (Fty A) F∘ F
+    F-extend : ∀ {A B : 𝓜 .Ty}
+               → 𝓜 .𝕋 B F∘ Functor.op (𝓜 .extend A) 
+               => (𝓝 .𝕋 (Fty B) F∘ Functor.op (𝓝 .extend (Fty A))) F∘ Functor.op F
 module SF  = STLC-Functor
 
 STLCFid : ∀ {ℓ} {ℓ'} (a : STLC {ℓ} {ℓ'}) → STLC-Functor a a 
@@ -117,6 +124,7 @@ STLCFid m .STLC-Functor.pres-⊤ = λ x → x
 STLCFid m .STLC-Functor.Fty = λ x → x
 STLCFid {ℓ} {ℓ'} m .STLC-Functor.F𝕋 .η Γ x = x
 STLCFid {ℓ} {ℓ'} m .STLC-Functor.F𝕋 .is-natural Γ Δ γ = funext λ _ → refl 
+STLCFid m .STLC-Functor.F-extend = {!   !}
   
 STLCF∘ : ∀ {ℓ ℓ'} {x y z : STLC {ℓ} {ℓ'}} → STLC-Functor y z → STLC-Functor x y → STLC-Functor x z
 STLCF∘ f g .STLC-Functor.F = f .SF.F F∘ g .SF.F
@@ -124,32 +132,10 @@ STLCF∘ f g .STLC-Functor.pres-⊤ xt Γ = f .SF.pres-⊤ (g .SF.pres-⊤ xt) �
 STLCF∘ f g .STLC-Functor.Fty x = f .SF.Fty (g .SF.Fty x)
 STLCF∘ {ℓ} {ℓ'} {x} {y} {z} f g .STLC-Functor.F𝕋 = tran
   where open import Cat.Instances.Functor.Duality
-        _▶_ : ∀ {Ao Aℓ} {A : Precategory Ao Aℓ} {Bo Bℓ} {B : Precategory Bo Bℓ}
-                {Co Cℓ} {C : Precategory Co Cℓ} {F G : Functor B C}
-                → F => G → (R : Functor A B) → F F∘ R => G F∘ R 
-        α ▶ R = F∘-functor .F₁ (α , idnt {F = R})
-
-        _◀_ : ∀ {Ao Aℓ} {A : Precategory Ao Aℓ} {Bo Bℓ} {B : Precategory Bo Bℓ}
-                {Co Cℓ} {C : Precategory Co Cℓ} {F G : Functor A B}
-                → (L : Functor B C) → F => G → L F∘ F => L F∘ G 
-        L ◀ α = F∘-functor .F₁ (idnt {F = L} , α)
-
-        α→ : ∀ {Ao Aℓ} {A : Precategory Ao Aℓ} {Bo Bℓ} {B : Precategory Bo Bℓ}
-                {Co Cℓ} {C : Precategory Co Cℓ} {Do Dℓ} {D : Precategory Do Dℓ}
-                {F : Functor C D} {G : Functor B C} {H : Functor A B}
-                → (F F∘ G) F∘ H => F F∘ (G F∘ H)
-        α→ {D = D} = NT (λ _ → D.id) (λ _ _ _ → D.idl _ ∙ (sym (D.idr _))) where module D = Precategory D
-
-        opnt : ∀ {Ao Aℓ} {A : Precategory Ao Aℓ} {Bo Bℓ} {B : Precategory Bo Bℓ} {Co Cℓ} {C : Precategory Co Cℓ}
-                  {F : Functor B C} {G : Functor A B}
-                → Functor.op F F∘ Functor.op G => Functor.op (F F∘ G)
-        opnt {C = C} = NT (λ _ → C.id) λ _ _ _ → Cop.idl _ ∙ sym (Cop.idr _) 
-            where module C = Precategory C
-                  module Cop = Precategory (C ^op)
-
+  
         tran : x .STLC.𝕋 _ => z .STLC.𝕋 _ F∘ (Functor.op (f .SF.F F∘ g .SF.F))
         tran = (z .STLC.𝕋 _ ◀ opnt {F = f .SF.F} {G = g .SF.F}) ∘nt α→ ∘nt (f .SF.F𝕋 ▶ Functor.op (g .SF.F)) ∘nt (g .SF.F𝕋)
-
+STLCF∘ f g .STLC-Functor.F-extend = {!   !} 
 
 STLCs : ∀ {ℓ ℓ'} → Precategory (lsuc (ℓ ⊔ ℓ')) (lsuc (ℓ ⊔ ℓ'))
 STLCs {ℓ} {ℓ'} .Ob = STLC {ℓ} {ℓ'}
@@ -177,13 +163,19 @@ record STLC-lamβη {ℓ ℓ'}  (stlc : STLC {ℓ} {ℓ'}) : Type (lsuc (ℓ ⊔
   app : ∀ {Γ} {A B} → Tm (A ⇒ B) Γ → Tm B (Γ ⊕ A)
   app {Γ} = lamβη .from .η Γ 
 
-record STLC-lam-F {ℓ ℓ'} {S T : STLC {ℓ} {ℓ'}} (F : STLC-Functor S T) (𝓜 : STLC-lamβη S) (𝓝 : STLC-lamβη T) : Type (lsuc (ℓ ⊔ ℓ')) where
-  open STLC-Functor F
-  open STLC-lamβη 𝓜 using () renaming (_⇒_ to _⇒M_)
-  open STLC-lamβη 𝓝 using () renaming (_⇒_ to _⇒N_)
+record STLC-lam-F {ℓ ℓ'} {S T : STLC {ℓ} {ℓ'}} (𝓕 : STLC-Functor S T) (𝓜 : STLC-lamβη S) (𝓝 : STLC-lamβη T) : Type (lsuc (ℓ ⊔ ℓ')) where
+  open STLC-Functor 𝓕
+  module S = STLC S
+  module T = STLC T
+  module 𝓜λ = STLC-lamβη 𝓜
+  module 𝓝λ = STLC-lamβη 𝓝
+
 
   field
-    pres-=> : ∀ {A B} → Fty (A ⇒M B) ≡ Fty A ⇒N Fty B
+    pres-=> : ∀ A B → Fty A 𝓝λ.⇒ Fty B ≡ Fty (A 𝓜λ.⇒ B)
+    pres-lamβη : ∀  {A B} → PathP (λ i → S.Tm[-⊕ A , B ] => T.𝕋 (pres-=> A B i) F∘ Functor.op F)
+                               ((𝓝λ.lamβη .to ▶ Functor.op F) ∘nt F-extend)
+                                (F𝕋 {A 𝓜λ.⇒ B} ∘nt 𝓜λ.lamβη .to)  
 
 STLC-lams : ∀ {ℓ ℓ'} → Displayed (STLCs {ℓ} {ℓ'}) _ _ 
 Displayed.Ob[ STLC-lams ] = STLC-lamβη

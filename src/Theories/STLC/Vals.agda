@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 module Theories.STLC.Vals where
 
 open import 1Lab.Prelude hiding (⌜_⌝)
@@ -5,17 +6,14 @@ open import Cat.Prelude hiding (⌜_⌝)
 
 open import Data.Dec
 
-open import Theories.STLC.Syntax
-
 data ValKind : Type where Ne Nf : ValKind
 
 variable V : ValKind
 
-data Var : Ctx → Ty → Type where
-    vz : Var (Γ , A) A
-    vs : Var Γ A → Var (Γ , B) A
+open import Theories.STLC.Ctxs
 
-data Val : ValKind → Ctx → Ty → Type where
+
+data Val : ValKind → Ctx Ty → Ty → Type where
   -- Terms in Normal form
   ne   : Val Ne Γ A → Val Nf Γ A
   lam  : Val Nf (Γ , A) B → Val Nf Γ (A ⇒ B)
@@ -29,8 +27,9 @@ data Val : ValKind → Ctx → Ty → Type where
 
 
 -- Embedding Vals into Terms -----------------------
+open import Theories.STLC.HIITctx
 
-⌜_⌝ : Val V Γ A → Term Γ A
+⌜_⌝ : Val V Γ A → ιSTLC Tm (Γ , A)
 
 -- normals
 
@@ -41,13 +40,13 @@ data Val : ValKind → Ctx → Ty → Type where
 
 -- neutrals
 
-⌜ app f x ⌝ = app ⌜ f ⌝ ⌜ x ⌝
+⌜ app f x ⌝ = app ⌜ f ⌝ [ ⟨ ιSTLC.Id , ⌜ x ⌝ ⟩ ]
 ⌜ var v ⌝ = aux v
-  where aux : Var Γ A → Term Γ A
-        aux vz = q
-        aux (vs x) = aux x [ p ]
+  where aux : Var Γ A → ιSTLC Tm (Γ , A)
+        aux vz = q ιSTLC.Id
+        aux (vs x) = aux x [ p ιSTLC.Id ]
 
-⌜ if cond then a else b ⌝ = if ⌜ cond ⌝ then ⌜ a ⌝ else ⌜ b ⌝
+⌜ if cond then a else b ⌝ = elim𝔹 ⌜ cond ⌝ ⌜ a ⌝ ⌜ b ⌝
 
 
 --------------------------------------------------
@@ -156,19 +155,6 @@ encode {v = if c then a else b} {if c' then a' else b'} P = let (vc , va , vb) =
                                                             in encode vc , (encode va) , encode vb
 
 
--- Variables are also decidable
-
-VCode : Var Γ A → Var Γ A → Type
-VCode {Γ , A} {A'} with A ≟T A'
-... | yes P = {!   !}
-... | no ¬P = λ {v v' → {!   !}}
-
-vs-inj : ∀ {v v' : Var Γ A} → vs v ≡ vs v' → v ≡ v'
-vs-inj = {!   !}
-
-_≟V_ : ∀ (v v' : Var Γ A) → Dec (v ≡ v')
-_≟V_ {Γ} {A} = {!   !} 
-
 _≟_ : ∀ (a b : Val V Γ A) → Dec (a ≡ b)
 
 -- normals --------------------------------------------------------------------
@@ -224,6 +210,8 @@ module Model where
   open import Cat.Functor.Naturality
   open import Cat.Diagram.Product
   import Cat.Functor.Hom 
+  open import Cat.Diagram.Terminal
+  open Functor
 
   private
     vq : ∀ v {Γ A} → Val v (Γ , A) A
@@ -234,29 +222,132 @@ module Model where
     tonf {V = Ne} x = ne x
     tonf {V = Nf} x = x
     
-    _[_]nf : Val Nf Γ A → Subst (Val Nf) Δ Γ → Val Nf Δ A
-    v [ γ ]nf = {! v γ  !}
+    toV :  Val Ne Γ A  → Val V Γ A
+    toV {V = Ne} = λ x → x
+    toV {V = Nf} = ne
 
-    𝕋nf : Ty → (PSh lzero (Ctxs (Val Nf))) .Precategory.Ob
-    𝕋nf A .Functor.F₀ Γ = el (Val Nf Γ A) (val-is-set Nf)
-    𝕋nf A .Functor.F₁ γ v = v [ γ ]nf
-    𝕋nf A .Functor.F-id = {!   !}
-    𝕋nf A .Functor.F-∘ = {!   !}
+    _[_]vRen : Val V Γ A →  Ren Δ Γ → Val V Δ A
+    ne v [ γ ]vRen = ne (v [ γ ]vRen)
+    lam v [ γ ]vRen = lam (v [ wk2Ren γ ]vRen)
+    true [ γ ]vRen = true
+    false [ γ ]vRen = false
+    app v v' [ γ ]vRen = app (v [ γ ]vRen) (v' [ γ ]vRen)
+    var x [ γ ]vRen = var (x [ γ ]v)
+    if v then t else f [ γ ]vRen = if v [ γ ]vRen then t [ γ ]vRen else (f [ γ ]vRen)
+
+    _[Id]vRen : ∀ (a : Val V Γ A) → (a [ (Rens Ty ^op) .Precategory.id ]vRen) ≡ a
+    ne a [Id]vRen = ap ne (a [Id]vRen)
+    lam a [Id]vRen = ap lam (a [Id]vRen)
+    true [Id]vRen = refl
+    false [Id]vRen = refl
+    app a a₁ [Id]vRen = ap₂ app (a [Id]vRen) (a₁ [Id]vRen)
+    var x [Id]vRen = ap var (x [id]v)
+    if a then t else f [Id]vRen = λ i → if (a [Id]vRen) i then (t [Id]vRen) i else ((f [Id]vRen) i)
 
 
 
-  NF : STLC {lzero} {lzero}
-  NF .STLC.𝓒 = Ctxs (Val Nf)
-  NF .STLC.𝓒-term = Ctxs-terminal (Val Nf)
-  NF .STLC.Ty = Ty
-  NF .STLC.𝕋 = {!   !}
-  NF .STLC.extend = is-model.generic-ctx-extension (Val Nf) (ne (var vz))
-  NF .STLC.extension Γ A = to-natural-iso the-iso
-    where open Binary-products (PSh lzero (Ctxs (Val Nf))) (PSh-products {κ = lzero} {C = (Ctxs (Val Nf))}) hiding (⟨_,_⟩)
-          open Cat.Functor.Hom (Ctxs (Val Nf))
-          the-iso : make-natural-iso (Hom[-, Γ ] ⊗₀ 𝕋nf A) Hom[-, Γ , A ]
-          the-iso .make-natural-iso.eta Γ (γ , a) = ⟨ γ , {!   !} ⟩
-          the-iso .make-natural-iso.inv Γ extend = (SComp p extend) , {!   !}
-          the-iso .make-natural-iso.eta∘inv = {!   !}
-          the-iso .make-natural-iso.inv∘eta = {!   !}
+  -- module SNf = SubstCat (Val Nf)
+
+  wk1Sub : Subst (Val V) Γ Δ → Subst (Val V) (Γ , A) Δ
+  wk1Sub ! = !
+  wk1Sub (γ ⊕ x) = (wk1Sub γ) ⊕ (x [ wk1Ren idRen ]vRen) 
+
+  wk2Sub : Subst (Val V) Γ Δ → Subst (Val V) (Γ , A) (Δ , A)
+  wk2Sub x = wk1Sub x ⊕ toV (var vz)
+
+
+  {-# TERMINATING #-}
+  _[_]vSub : Val V Γ A →  Subst (Val Nf) Δ Γ → Val Nf Δ A
+  ne v [ γ ]vSub = v [ γ ]vSub
+  lam v [ γ ]vSub = lam (v [ wk2Sub γ ]vSub)
+  true [ γ ]vSub = true
+  false [ γ ]vSub = false
+  app f a [ γ ]vSub with f [ γ ]vSub 
+  ... | ne f = ne (app f (a [ γ ]vSub))
+  ... | lam f = f [ (Ren→Subst (Val Nf) (ne ∘ var) idRen) ⊕ (a [ γ ]vSub) ]vSub
+  var vz [ _ ⊕ x ]vSub = x
+  var (vs x) [ γ ⊕ _ ]vSub = (var x) [ γ ]vSub
+  if cond then v1 else v2 [ γ ]vSub with cond [ γ ]vSub
+  ... | ne c = ne (if c then (v1 [ γ ]vSub) else (v2 [ γ ]vSub))
+  ... | true = v1 [ γ ]vSub
+  ... | false = v2 [ γ ]vSub
+
+  -- NFS∘ : ∀ {Γ Δ Σ} → SNf.Subst Δ Σ → SNf.Subst Γ Δ → SNf.Subst Γ Σ
+  -- NFS∘ ! δ = !
+  -- NFS∘ (γ ⊕ x) δ = (NFS∘ γ δ) ⊕ (x [ δ ]vSub)
+
+  -- NFSubs : Precategory lzero lzero
+  -- NFSubs .Precategory.Ob = Ctx Ty
+  -- NFSubs .Precategory.Hom = SNf.Subst
+  -- NFSubs .Precategory.Hom-set = {!   !}
+  -- NFSubs .Precategory.id = SNf.Ren→Subst (ne ∘ var) idRen
+  -- NFSubs .Precategory._∘_ = NFS∘ 
+  -- NFSubs .Precategory.idr = {!   !}
+  -- NFSubs .Precategory.idl = {!   !}
+  -- NFSubs .Precategory.assoc = {!   !}
+
+  -- Rens→Subs : Functor (Rens Ty) NFSubs
+  -- Rens→Subs = record { F₀ = id ; F₁ = SNf.Ren→Subst (ne ∘ var) ; F-id = refl ; F-∘ = λ _ _ → {!   !} }
+
+  -- _[Rens→Subs] : ∀ {Γ Δ A} (t : Val Nf Γ A) {ρ : Ren Δ Γ} → t [ Rens→Subs .F₁ ρ ]vSub ≡ t [ ρ ]vRen
+  -- (ne t [Rens→Subs]) {ρ} = {!   !}
+  -- (lam t [Rens→Subs]) {ρ} = λ i → lam ((t [Rens→Subs]) {{! wk2Ren ρ  !}} i)
+  -- true [Rens→Subs] = {!   !}
+  -- false [Rens→Subs] = {!   !}
+
+  -- extendSubs : Ty → Functor NFSubs NFSubs
+  -- extendSubs A .Functor.F₀ = _, A
+  -- extendSubs A .Functor.F₁ = wk2Sub
+  -- extendSubs A .Functor.F-id = {!   !}
+  -- extendSubs A .Functor.F-∘ = {!   !}
+
+  -- NFSubsTerm : Terminal NFSubs
+  -- NFSubsTerm = record { top = ε ; has⊤ = λ x → contr ! (λ { ! → refl }) }
+
+  -- Vsub-∘ : ∀ {V} {Γ Δ Σ A} (f : SNf.Subst Σ Δ) (g : SNf.Subst Δ Γ ) (t : Val V Γ A)
+  --        → Path (Val Nf Σ A) (t [ ((NFSubs ^op) .Precategory._∘_ f g) ]vSub) ((t [ g ]vSub) [ f ]vSub)
+  -- Vsub-∘ = {!   !}
+
+  -- 𝕋nf : Ty → (PSh lzero NFSubs) .Precategory.Ob
+  -- 𝕋nf A .Functor.F₀ Γ = el (Val Nf Γ A) (val-is-set Nf)
+  -- 𝕋nf A .Functor.F₁ γ v = v [ γ ]vSub
+  -- 𝕋nf A .Functor.F-id = funext λ t → (t [Rens→Subs]) ∙ (t [Id]vRen)
+  -- 𝕋nf A .Functor.F-∘ f g = funext (Vsub-∘ f g)
+
+  open import Theories.STLC.Contextual
+
+  CNF : Contextual
+  CNF .Contextual.Typ = Ty
+  CNF .Contextual.TrmSet Γ A = el (Val Nf Γ A) (val-is-set Nf)
+  CNF .Contextual._[_]C = _[_]vSub
+  CNF .Contextual.Cid = Ren→Subst (Val Nf) (ne ∘ var) idRen
+  CNF .Contextual.idL = {!  !}
+  CNF .Contextual._[id]C = {!   !}
+
+  NF : STLC
+  NF = ContextualModel CNF
+
+  NFBool : STLC-Bool NF
+  NFBool .STLC-Bool.𝔹 = 𝔹
+  NFBool .STLC-Bool.tru = true 
+  NFBool .STLC-Bool.fls = false
+  NFBool .STLC-Bool.elim (ne x) a b = ne (if x then a else b)
+  NFBool .STLC-Bool.elim true a _ = a
+  NFBool .STLC-Bool.elim false _ b = b
+  NFBool .STLC-Bool.elim-tru = refl
+  NFBool .STLC-Bool.elim-fls = refl
+
+  {-# TERMINATING #-}
+  NFLam : STLC-lamβη NF
+  NFLam .STLC-lamβη._⇒_ = _⇒_
+  NFLam .STLC-lamβη.lamβη = to-natural-iso the-iso
+    where open STLC NF 
+          
+          the-iso : make-natural-iso (Tm[-⊕_,_] A B) (𝕋 (A ⇒ B))
+          the-iso .make-natural-iso.eta Γ = lam
+          the-iso .make-natural-iso.inv Γ (ne f) = ne (app (f [ wk1Ren idRen ]vRen) (ne (var vz)))
+          the-iso .make-natural-iso.inv Γ (lam f) = f
+          the-iso .make-natural-iso.eta∘inv Γ = funext λ {(ne f) → {!   !}
+                                                        ; (lam f) → refl}
+          the-iso .make-natural-iso.inv∘eta Γ = refl
           the-iso .make-natural-iso.natural = {!   !}

@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 module Theories.STLC.Ctxs  where
 
 open import 1Lab.Prelude
@@ -46,135 +47,176 @@ Ty-is-set = Discrete→is-set _≟T_
 
 infixr 40 _⇒_
 
-data Ctx : Type where
-  ε   : Ctx
-  _,_ : Ctx → Ty → Ctx
+data Ctx {ℓ} (ty : Type ℓ) : Type ℓ where
+  ε   : Ctx ty
+  _,_ : Ctx ty → ty → Ctx ty
 
 variable
-  Γ Δ Ψ Φ : Ctx
-  A B C : Ty
+  ℓ : Level
+  ty : Type ℓ
+  Γ Δ Ψ Φ : Ctx ty
+  A B C : ty
 
-,-inj : Path Ctx (Γ , A) (Δ , B) → (Γ ≡ Δ) × (A ≡ B)
+,-inj : Path (Ctx ty) (Γ , A) (Δ , B) → (Γ ≡ Δ) × (A ≡ B)
 ,-inj {A = A} {B = B} x = ap (fst ∘ un, (ε , A)) x , ap (snd ∘ un, (ε , B)) x
-  where un, : Ctx × Ty → Ctx → Ctx × Ty
+  where un, : Ctx ty × ty → Ctx ty → Ctx ty × ty
         un, a ε = a
         un, a (x , x') = x , x'
 
 
-CodeCtx : Ctx → Ctx → Type
-CodeCtx ε ε = ⊤
-CodeCtx ε (Δ , x) = ⊥
-CodeCtx (Γ , x) ε = ⊥
-CodeCtx (Γ , x) (Δ , y) = CodeCtx Γ Δ × (x ≡ y)
+open import Data.List
+Ctx≃List : Ctx ty ≃ List ty
+Ctx≃List = Iso→Equiv (to , iso from tofrom fromto)
+  where to : _
+        to ε = []
+        to (Γ , A) = A ∷ to Γ
+        from : _
+        from [] = ε
+        from (A ∷ Γ) = from Γ , A
+        tofrom : _
+        tofrom [] = refl
+        tofrom (A ∷ Γ) = ap₂ _∷_ refl (tofrom Γ)
+        fromto : _
+        fromto ε = refl
+        fromto (Γ , A) i = fromto Γ i , A
 
-Ctx-discrete : Discrete Ctx
-Ctx-discrete ε ε = yes refl
-Ctx-discrete ε (y , x) = no λ P → subst (CodeCtx ε) P tt
-Ctx-discrete (xs , x) ε = no λ P → subst (CodeCtx ε) (sym P) tt
-Ctx-discrete (xs , x) (ys , y) with Ctx-discrete xs ys | x ≟T y
-... | yes xsP | yes xP = yes (λ i → xsP i ,  xP i)
-... | yes _ | no ¬a = no (λ P → ¬a (,-inj P .snd))
-... | no ¬a | yes _ = no λ P → ¬a (,-inj P .fst)
-... | no ¬a | no ¬_ = no λ P → ¬a (,-inj P .fst)
+Ctx-discrete : Discrete ty → Discrete (Ctx ty)
+Ctx-discrete d = transp (λ i → Discrete (ua Ctx≃List (~ i))) i0 decide
+  where decide : _
+        decide [] [] = yes refl
+        decide [] (x ∷ b) = no (∷≠[] ∘ sym)
+        decide (x ∷ a) [] = no ∷≠[]
+        decide (x ∷ a) (y ∷ b) with d x y | decide a b
+        ... | yes p | yes a₁ = yes (λ i → p i ∷ a₁ i)
+        ... | yes p | no ¬a = no (¬a ∘ ∷-tail-inj)
+        ... | no ¬a | ps = no (¬a ∘ ∷-head-inj)
 
-Ctx-is-set : is-set Ctx
-Ctx-is-set = Discrete→is-set Ctx-discrete
-
-module CtxSubs where
-
-  data Subst (T : Ctx → Ty → Type) : Ctx → Ctx → Type 
-
-  private variable
-    T : Ctx → Ty → Type
-  variable
-    γ γ' : Subst T Γ Δ
-    δ : Subst T Δ Ψ
-    ψ : Subst T Ψ Φ
-
-
-  data Subst T where
-    SId   : Subst T Γ Γ
-    SComp : Subst T Δ Ψ → Subst T Γ Δ → Subst T Γ Ψ
-
-    lid   : SComp SId γ ≡ γ
-    rid   : SComp γ SId ≡ γ
-    Sassoc : SComp γ (SComp δ ψ) ≡ SComp (SComp γ δ) ψ
+Ctx-is-set : ∀ {ℓ} {ty : Type ℓ} → is-set ty → is-set (Ctx ty)
+Ctx-is-set {ℓ} {ty} d = transp (λ i → is-set (ua (Ctx≃List {ℓ} {ty}) (~ i))) i0 (ListPath.is-set→List-is-set d)
 
 
-    ⟨⟩ : Subst T Γ ε
-    ⟨⟩! : ∀ (x : Subst T Γ ε) → x ≡ ⟨⟩
+CtxF : ∀ {ℓ} → Functor (Sets ℓ) (Sets ℓ)
+CtxF = record { F₀ = λ t →  el (Ctx ∣ t ∣) (Ctx-is-set (t .is-tr))
+              ; F₁ = F1
+              ; F-id = funext Fid 
+              ; F-∘ = λ f g → funext λ x → F∘ f g x 
+              }
+  where F1 : (A → B) → Ctx A → Ctx B
+        F1 = λ { f ε → ε
+               ; f (Γ , x) → F1 f Γ , f x }
+        Fid : ∀ (x : Ctx A) → F1 id x ≡ x
+        Fid ε = refl
+        Fid (Γ , x) = λ i → (Fid Γ i) , x
+        
+        F∘ : ∀ (f : B → C) (g : A → B) x → F1 (f ∘ g) x ≡ F1 f (F1 g x)
+        F∘ f g ε = refl
+        F∘ f g (Γ , A) i = (F∘ f g Γ i) , f (g A)
 
-    ⟨_,_⟩ : Subst T Γ Δ → T Γ A → Subst T Γ (Δ , A)
+
+data Els {ℓ₁ ℓ₂} {ty : Type ℓ₁} (el : ty → Type ℓ₂) : (Γ : Ctx ty) → Type (ℓ₁ ⊔ ℓ₂) where
+  ! : Els el ε
+  _⊕_ : {Γ : Ctx ty} {A : ty} → Els el Γ → el A → Els el (Γ , A)
+
+qEls : ∀ {el : ty → Type ℓ} → Els el (Γ , A) → el A
+qEls (_ ⊕ e) = e
+
+pEls : ∀ {el : ty → Type ℓ} → Els el (Γ , A) → Els el Γ
+pEls (γ ⊕ _) = γ
+
+mapEls : {el₁ el₂ : ty → Type ℓ} → (∀ {ty} → el₁ ty → el₂ ty) → Els el₁ Γ → Els el₂ Γ
+mapEls f ! = !
+mapEls f (s ⊕ x) = mapEls f s ⊕ f x
+
+data Var {ℓ} {ty : Type ℓ} : Ctx ty → ty → Type ℓ where
+  vz : ∀ {Γ} {A} → Var (Γ , A) A
+  vs : ∀ {Γ} {A} {B} → Var Γ A → Var (Γ , B) A
+  
+-- Variables are also decidable
+
+VCode : Var Γ A → Var Γ A → Type ℓ
+VCode {Γ = Γ , B} {B} vz v' = {! v'  !}
+VCode (vs v) vz = Lift _ ⊥
+VCode (vs v) (vs v') = VCode v v' 
+
+vs-inj : ∀ {v v' : Var Γ A} → vs v ≡ vs v' → v ≡ v'
+vs-inj = {!   !}
+
+_≟V_ : ∀ (v v' : Var Γ A) → Dec (v ≡ v')
+_≟V_ {Γ} {A} = {!   !} 
+
+
+Ren : ∀ {ℓ} {ty : Type ℓ} (A B : Ctx ty) → Type ℓ
+Ren Γ Δ = Els (Var Γ) Δ
+
+wk1Ren : Ren Γ Δ → Ren (Γ , A) Δ
+wk1Ren ! = !
+wk1Ren (γ ⊕ x) = wk1Ren γ ⊕ vs x
+
+wk2Ren : Ren Γ Δ → Ren (Γ , A) (Δ , A)
+wk2Ren x = (wk1Ren x) ⊕ vz
+
+idRen : Ren Γ Γ
+idRen {Γ = ε} = !
+idRen {Γ = Γ , x} = wk2Ren idRen
+
+
+
+_[_]v : Var Γ A → Ren Δ Γ → Var Δ A
+vz [ _ ⊕ x ]v = x
+vs v [ γ ⊕ x ]v = v [ γ ]v
+
+_[id]v : (v : Var Γ A) → v [ idRen ]v ≡ v
+vz [id]v = refl
+vs v [id]v = {!   !}
+
+
+Ren∘ : ∀ {Γ Δ Σ : Ctx ty} → Ren Δ Σ → Ren Γ Δ → Ren Γ Σ
+Ren∘ ! δ = !
+Ren∘ (γ ⊕ x) δ = (Ren∘ γ δ) ⊕ (x [ δ ]v)
+
+wk2∘ : ∀ {Γ Δ Σ} {A : ty} (γ : Ren Δ Σ) (δ : Ren Γ Δ) → wk2Ren {A = A} (Ren∘ γ δ) ≡ Ren∘ (wk2Ren γ) (wk2Ren δ)
+wk2∘ γ δ  = {!   !}
+
+wk1η : ∀ {Γ Δ Σ} {A : ty} → (γ : Ren Δ Σ) (f : Ren Γ Δ) (x : Var Γ A) → Ren∘ (wk1Ren γ) (f ⊕ x) ≡ Ren∘ γ f 
+wk1η γ f x = {!   !}
+
+idrRen : ∀ (f : Ren Γ Δ) → Ren∘ f idRen ≡ f
+idrRen ! = refl
+idrRen (f ⊕ x) = λ i → (idrRen f i) ⊕ (x [id]v) i
+
+idlRen : ∀ (f : Ren Γ Δ) → Ren∘ idRen f ≡ f
+idlRen ! = refl
+idlRen (f ⊕ x) = λ i → (wk1η _ _ x ∙ idlRen f) i ⊕ x
+
+Rens : ∀ (ty : Type ℓ) → Precategory _ _
+Rens ty .Precategory.Ob = Ctx ty
+Rens _ .Precategory.Hom = Ren
+Rens _ .Precategory.Hom-set = {!   !}
+Rens _ .Precategory.id = idRen
+Rens _ .Precategory._∘_ = Ren∘
+Rens _ .Precategory.idr = idrRen
+Rens _ .Precategory.idl = idlRen
+Rens _ .Precategory.assoc = {!   !}
+
+RensTerminal : ∀ {ty : Type ℓ} → Terminal (Rens ty)
+RensTerminal .Terminal.top = ε
+RensTerminal .Terminal.has⊤ = λ x → contr ! (λ { ! → refl})
+
+
+
+extendRens : ty → Functor (Rens ty) (Rens ty)
+extendRens A .Functor.F₀ Γ = Γ , A
+extendRens A .Functor.F₁ = wk2Ren
+extendRens A .Functor.F-id = refl
+extendRens A .F-∘ f g = wk2∘ f g
+
+
+
+module _ {o ℓ} {ty : Type o} (T : Ctx ty → ty → Type ℓ) where
+  Subst : (A B : Ctx ty) → Type (o ⊔ ℓ)
+  Subst Γ Δ = Els (T Γ) Δ
+
+  Ren→Subst : (f : ∀ {Γ} {A} → Var Γ A → T Γ A) → (∀ {Γ Δ} → Ren Γ Δ → Subst Γ Δ)
+  Ren→Subst f ! = !
+  Ren→Subst f (γ ⊕ x) = (Ren→Subst f γ) ⊕ (f x) 
     
-    p : Subst T (Γ , A) Γ
-    p∘⟨_,_⟩ : ∀ {Γ Δ} (γ : Subst T Γ Δ) (a : T Γ A) → SComp p ⟨ γ , a ⟩ ≡ γ
-
-    trunc : ∀ (Γ Δ : Ctx) → is-set (Subst T Γ Δ)
-
-
-
-
--- Categorical defintions
-
-module Ctxs-cat (T : Ctx → Ty → Type)
-                      where
- 
-
-  open CtxSubs
-
-  -- Contexts and substitutions form a category
-
-  Ctxs : Precategory lzero lzero
-  Ctxs .Precategory.Ob = Ctx
-  Ctxs .Precategory.Hom = Subst T
-  Ctxs .Precategory.Hom-set = trunc
-  Ctxs .Precategory.id = SId
-  Ctxs .Precategory._∘_ = SComp
-  Ctxs .Precategory.idr _ = rid
-  Ctxs .Precategory.idl _ = lid
-  Ctxs .Precategory.assoc _ _ _ = Sassoc
-
-  open Precategory Ctxs renaming (_∘_ to _∘s_ )
-  open Cat.Reasoning Ctxs hiding (_∘_)
-
-
-  Ctxs-terminal : Terminal Ctxs
-  Ctxs-terminal .Terminal.top = ε
-  Ctxs-terminal .Terminal.has⊤ = λ x → contr ⟨⟩ (sym ∘ ⟨⟩!)
-
-
-  module CtxExtension (q : ∀ {Γ'} {A'} → T (Γ' , A') A')
-      (_[_] : ∀ {Γ' Δ'} {A'} → T Γ' A' → Subst T Δ' Γ' → T Δ' A')
-      (_[Id] : ∀ {Γ'} {A'} → (t : T Γ' A') → t [ SId ] ≡ t)
-      (_[_][_] : ∀ {Γ' Δ' Ψ'} {A'} (a : T Ψ' A') (γ : Subst T Δ' Ψ') (δ : Subst T Γ' Δ') → (a [ γ ]) [ δ ] ≡ a [ γ ∘s δ ])
-      (q[⟨_,_⟩] : ∀ {Γ' Δ'} {A'} (γ : Subst T Γ' Δ') (a : T Γ' A') → q [ ⟨ γ , a ⟩ ] ≡ a)
-      ([⟨_,_⟩][_] : ∀ {Γ' Δ' Ψ'} {A'} {t} (γ : Subst T Γ' Δ') (a : T Γ' A') (δ : Subst T Ψ' Γ') → Path (T Ψ' A') ((t [ ⟨ γ , a ⟩ ]) [ δ ]) (t [ ⟨ γ ∘s δ , a [ δ ] ⟩ ]))
-          where
-
-
-    postulate
-        ⟨_,_⟩∘_ : ∀ (γ : Subst T Γ Δ) (a : T Γ A) (δ : Subst T Ψ Γ) 
-                  → ⟨ γ , a ⟩ ∘s δ ≡ ⟨ γ ∘s δ , a [ δ ] ⟩
-
-    ⟨p,q⟩ : Path (Subst T (Γ , A) (Γ , A)) ⟨ p , q ⟩ SId 
-    ⟨p,q⟩ = trust
-      where postulate trust : ∀ {A} → A
-
-    
-    wk : Subst T Γ Δ → (A : Ty) → Subst T (Γ , A) (Δ , A)
-    wk γ _ = ⟨ γ ∘s p , q ⟩
-
-    wk∘ : wk γ A ∘s wk δ A ≡ wk (γ ∘s δ) A
-    wk∘ {γ = γ} {δ = δ} = ⟨ γ ∘s p , q ⟩ ∘s ⟨ δ ∘s p , q ⟩
-                ≡⟨ (⟨ _ , _ ⟩∘ _) ⟩
-             ⟨ (γ ∘s p) ∘s ⟨ δ ∘s p , q ⟩ , q [ ⟨ δ ∘s p , q ⟩ ] ⟩
-                ≡⟨ (λ i → ⟨ (sym (Sassoc {γ = γ}) ∙ (refl ⟩∘⟨ p∘⟨ δ ∘s p , q ⟩) ) i , q[⟨ δ ∘s p , q ⟩] i ⟩) ⟩
-             ⟨ γ ∘s ( δ ∘s p) , q ⟩
-                ≡⟨ (λ i → ⟨ Sassoc {γ = γ} {δ = δ} {ψ = p} i , q ⟩) ⟩
-              ⟨ (γ ∘s δ) ∘s p , q ⟩ ∎
-
-    generic-ctx-extension : ∀ Ty → Functor Ctxs Ctxs
-    generic-ctx-extension A .F₀ = _, A
-    generic-ctx-extension A .F₁ γ = ⟨ SComp γ p , q ⟩
-    generic-ctx-extension A .F-id {Γ} = ap ⟨_, q ⟩ lid ∙ ⟨p,q⟩
-    generic-ctx-extension A .F-∘ f g = sym wk∘

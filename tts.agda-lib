@@ -2,7 +2,7 @@ name: tts
 include:
   src/
 depend:
-  cubical-1lab
+  1lab
 
 flags:
   --cubical

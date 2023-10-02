@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 module Theories.STLC.HIITctx where
 
 open import 1Lab.Prelude
@@ -7,8 +8,8 @@ open import Theories.STLC.Ctxs
 data 𝓘 : Type where Tm Sub : 𝓘
 
 args : 𝓘 → Type
-args Tm = Ctx × Ty
-args Sub = Ctx × Ctx
+args Tm = Ctx Ty × Ty
+args Sub = Ctx Ty × Ctx Ty
 
 data ιSTLC : (i : 𝓘) → args i → Type where
   Id   : ιSTLC Sub (Γ , Γ)
@@ -61,14 +62,19 @@ data ιSTLC : (i : 𝓘) → args i → Type where
 
   ιSTLC-is-set : ∀ i a → is-set (ιSTLC i a)
 
-vz : ιSTLC Tm ((Γ , A) , A)
-vz = q Id
+ιvz : ιSTLC Tm ((Γ , A) , A)
+ιvz = q Id
+
+ιvsuc : ιSTLC Tm (Γ , A) → ιSTLC Tm ((Γ , B) , A)
+ιvsuc x = x [ p Id ]
 
 open import Theories.STLC.Model
 open import Cat.Diagram.Terminal
 open import Cat.Diagram.Product
 open import Cat.Prelude 
+open import Cat.Morphism hiding (Hom)
 open import Cat.Functor.Base
+open Functor
 open import Cat.Functor.Naturality
 open import Cat.CartesianClosed.Instances.PSh 
 open Precategory using (Ob)
@@ -76,7 +82,7 @@ open Precategory using (Ob)
 
 
 Subs : Precategory lzero lzero
-Subs .Precategory.Ob = Ctx
+Subs .Precategory.Ob = Ctx Ty
 Subs .Precategory.Hom x y = ιSTLC Sub (x , y)
 Subs .Precategory.Hom-set x y = ιSTLC-is-set Sub (x , y)
 Subs .Precategory.id = ιSTLC.Id
@@ -133,7 +139,7 @@ extend A .Functor.F-∘ = ∘↑
 
 ιSTLC-model : STLC 
 ιSTLC-model .STLC.𝓒 = Subs
-ιSTLC-model .STLC.𝓒-strict = Ctx-is-set
+ιSTLC-model .STLC.𝓒-strict = Ctx-is-set Ty-is-set
 ιSTLC-model .STLC.𝓒-term = SubsTerminal
 ιSTLC-model .STLC.Ty = Ty
 ιSTLC-model .STLC.𝕋 = ι𝕋
@@ -166,62 +172,144 @@ extend A .Functor.F-∘ = ∘↑
 ιSTLC-Bool-model .STLC-Bool.elim-tru = elimT _ _
 ιSTLC-Bool-model .STLC-Bool.elim-fls = elimF _ _
 
+open import Cat.Displayed.Base
 
-ιSTLC-LamBool-model : STLC-lam-bools {lzero} {lzero} .fst .Precategory.Ob
-ιSTLC-LamBool-model = (ιSTLC-model , ιSTLC-lam-model) , (ιSTLC-model , ιSTLC-Bool-model) , refl
+ιSTLC-LamBool-model : Displayed.Ob[_] STLC-lam-bool ιSTLC-model
+ιSTLC-LamBool-model = ιSTLC-lam-model , ιSTLC-Bool-model
 
+open import Cat.Displayed.Total
 open import Cat.Diagram.Initial
-open import Cat.Diagram.Terminal
 
-ιSLB-is-initial : Initial (STLC-lam-bools .fst)
-ιSLB-is-initial .Initial.bot = ιSTLC-LamBool-model
-ιSLB-is-initial .Initial.has⊥ x = contr the-hom {!   !}
-  where 
-        module SL = STLC-lamβη (x .fst .snd)
-        module SB = STLC-Bool (x .snd .fst .snd)
-        open Terminal
-        open Functor
-        open _=>_ 
-        module S = STLC (x .fst .fst)
-        module C = Precategory (S.𝓒)
+ιSTLC-is-initial : Initial (∫ (STLC-lam-bool {lzero} {lzero}))
+ιSTLC-is-initial .Initial.bot = ιSTLC-model , ιSTLC-LamBool-model
+ιSTLC-is-initial .Initial.has⊥ x@(stlc , stlc-lam , stlc-bool) = contr the-hom {!   !} 
+  where
+      module S = STLC stlc
+      module C = Precategory (S.𝓒)   
+        
+      module SB = STLC-Bool (stlc-bool)
+      module SL = STLC-lamβη (stlc-lam)
 
-        ιTy : Ty → S.Ty
-        ιTy 𝔹 = transp (λ i → x .snd .snd (~ i) .STLC.Ty) i0 SB.𝔹
-        ιTy (A ⇒ B) = SL._⇒_ (ιTy A) (ιTy B)
+      open _≅_
 
-        ιCtx : Ctx → C.Ob
-        ιCtx ε = S.ε
-        ιCtx (Γ , A) = (ιCtx Γ) S.⊕ (ιTy A)
+      ιTy : Ty → S.Ty
+      ιTy 𝔹 = SB.𝔹
+      ιTy (A ⇒ B) = SL._⇒_ (ιTy A) (ιTy B)
 
-        ιSub : ιSTLC Sub (Γ , Δ) → C.Hom (ιCtx Γ) (ιCtx Δ)
-        ιTm : ∀ {Γ} {A} → ιSTLC Tm (Γ , A) → S.Tm (ιTy A) (ιCtx Γ)
+      ιCtx : Ctx Ty → C.Ob
+      ιCtx ε = S.ε
+      ιCtx (Γ , A) = (ιCtx Γ) S.⊕ (ιTy A)
+
+      ιSub : ιSTLC Sub (Γ , Δ) → C.Hom (ιCtx Γ) (ιCtx Δ)
+      ιTm : ∀ {Γ} {A} → ιSTLC Tm (Γ , A) → S.Tm (ιTy A) (ιCtx Γ)
+      
+
+      ιSub ιSTLC.Id = C.id
+      ιSub (Comp f g) = ιSub f C.∘ ιSub g
+      ιSub (lid x i) = C.idl (ιSub x) i
+      ιSub (rid x i) = C.idr (ιSub x) i
+      ιSub (Sassoc f g h i) = C.assoc (ιSub f) (ιSub g) (ιSub h) i
+      ιSub {Γ = Γ} ⟨⟩ = S.⟨⟩ (ιCtx Γ)
+      ιSub (⟨⟩! f i) = S.⟨⟩! (ιSub f) i
+      ιSub (⟨ γ , t ⟩) = S.⟨ ιSub γ , ιTm t ⟩
+      ιSub (p γ) = S.p (ιSub γ)
+      ιSub (p⟨_,_⟩ γ a i) = S.p⟨ ιSub γ , ιTm a ⟩ i
+      ιSub (pqη γ i) = S.pqη (ιSub γ) i
+      ιSub ((⟨ γ , t ⟩∘ δ) i) = (S.⟨ ιSub γ , ιTm t ⟩∘ ιSub δ) i
+      ιSub (ιSTLC-is-set .Sub (Γ , Δ) γ δ P Q i j) = C.Hom-set (ιCtx Γ) (ιCtx Δ) (ιSub γ) (ιSub δ)
+                                                          (λ i → ιSub (P i)) (λ i → ιSub (Q i))
+                                                          i j
+
+      ιTm (q γ) = S.q (ιSub γ)
+      ιTm (q⟨_,_⟩ {Γ} {Δ} {A} γ t i) = S.extension (ιCtx Δ) (ιTy A) .invr i ._=>_.η
+                                           (ιCtx Γ) (ιSub γ , ιTm t) .snd
+      ιTm (t [ γ ]) = (ιTm t) S.[ ιSub γ ]
+      ιTm ((x [Id]) i) = (ιTm x S.[Id]) i
+      ιTm {A = A} ((x [ γ ][ δ ]) i) = S.𝕋 (ιTy A) .F-∘ (ιSub δ) (ιSub γ) (~ i) (ιTm x)
+      ιTm (lam x) = SL.lam (ιTm x)
+      ιTm (app x) = SL.app (ιTm x)
+      ιTm (lamη {Γ} x i) = SL.lamβη .invl i ._=>_.η (ιCtx Γ) (ιTm x)
+      ιTm (appβ {Γ} x i) = SL.lamβη .invr i ._=>_.η (ιCtx Γ) (ιTm x)
+      ιTm (lam[] x γ i) = {!  SL.lamβη .to  !}
+      ιTm true = SB.tru
+      ιTm false = SB.fls
+      ιTm (elim𝔹 x x₁ x₂) = SB.elim (ιTm x) (ιTm x₁) (ιTm x₂)
+      ιTm (elimT a b i) = SB.elim-tru {a = ιTm a} {ιTm b} i
+      ιTm (elimF a b i) = SB.elim-fls {a = ιTm a} {ιTm b} i
+      ιTm (ιSTLC-is-set .Tm (Γ , A) x y P Q i j) = S.𝕋 (ιTy A) .F₀  (ιCtx Γ) .is-tr
+                                                        (ιTm x) (ιTm y)
+                                                        (λ i → ιTm (P i)) (λ i → ιTm (Q i))
+                                                        i j
+
+      homSTLC : STLCs .Precategory.Hom _ _
+      homSTLC .STLC-Functor.F .Functor.F₀ = ιCtx
+      homSTLC .STLC-Functor.F .Functor.F₁ = ιSub
+      homSTLC .STLC-Functor.F .Functor.F-id = {!   !}
+      homSTLC .STLC-Functor.F .Functor.F-∘ = {!   !}
+      homSTLC .STLC-Functor.pres-⊤ = {!   !}
+      homSTLC .STLC-Functor.Fty = ιTy
+      homSTLC .STLC-Functor.F𝕋 = NT (λ _ → ιTm) {!   !}
+      homSTLC .STLC-Functor.F-extend = {!   !}
+
+      homLam : Displayed.Hom[_] STLC-lams homSTLC _ _
+      homLam .STLC-lam-F.pres-=> A B  = refl
+      homLam .STLC-lam-F.pres-lamβη = {!   !}
+
+      the-hom : Total-hom _ _ x
+      the-hom = total-hom homSTLC (homLam , {!   !})
+
+-- open import Cat.Diagram.Initial
+-- open import Cat.Diagram.Terminal
+
+-- ιSLB-is-initial : Initial (STLC-lam-bools .fst)
+-- ιSLB-is-initial .Initial.bot = ιSTLC-LamBool-model
+-- ιSLB-is-initial .Initial.has⊥ x = contr the-hom {!   !}
+--   where 
+--         module SL = STLC-lamβη (x .fst .snd)
+--         module SB = STLC-Bool (x .snd .fst .snd)
+--         open Terminal
+--         open Functor
+--         open _=>_ 
+--         module S = STLC (x .fst .fst)
+--         module C = Precategory (S.𝓒)
+
+--         ιTy : Ty → S.Ty
+--         ιTy 𝔹 = transp (λ i → x .snd .snd (~ i) .STLC.Ty) i0 SB.𝔹
+--         ιTy (A ⇒ B) = SL._⇒_ (ιTy A) (ιTy B)
+
+--         ιCtx : Ctx → C.Ob
+--         ιCtx ε = S.ε
+--         ιCtx (Γ , A) = (ιCtx Γ) S.⊕ (ιTy A)
+
+--         ιSub : ιSTLC Sub (Γ , Δ) → C.Hom (ιCtx Γ) (ιCtx Δ)
+--         ιTm : ∀ {Γ} {A} → ιSTLC Tm (Γ , A) → S.Tm (ιTy A) (ιCtx Γ)
        
 
-        ιSub ιSTLC.Id = C.id
-        ιSub (Comp f g) = ιSub f C.∘ ιSub g
-        ιSub (lid x i) = C.idl (ιSub x) i
-        ιSub (rid x i) = C.idr (ιSub x) i
-        ιSub (Sassoc f g h i) = C.assoc (ιSub f) (ιSub g) (ιSub h) i
-        ιSub {Γ = Γ} ⟨⟩ = S.⟨⟩ (ιCtx Γ)
-        ιSub (⟨⟩! f i) = S.⟨⟩! (ιSub f) i
-        ιSub (⟨ γ , t ⟩) = S.⟨ ιSub γ , ιTm t ⟩
-        ιSub (p γ) = S.p (ιSub γ)
-        ιSub (p⟨_,_⟩ γ a i) = S.p⟨ ιSub γ , ιTm a ⟩ i
-        ιSub (pqη γ i) = S.pqη (ιSub γ) i
-        ιSub ((⟨ γ , t ⟩∘ δ) i) = (S.⟨ ιSub γ , ιTm t ⟩∘ ιSub δ) i
-        ιSub (ιSTLC-is-set .Sub (Γ , Δ) γ δ P Q i j) = C.Hom-set (ιCtx Γ) (ιCtx Δ) (ιSub γ) (ιSub δ)
-                                                           (λ i → ιSub (P i)) (λ i → ιSub (Q i))
-                                                           i j
+--         ιSub ιSTLC.Id = C.id
+--         ιSub (Comp f g) = ιSub f C.∘ ιSub g
+--         ιSub (lid x i) = C.idl (ιSub x) i
+--         ιSub (rid x i) = C.idr (ιSub x) i
+--         ιSub (Sassoc f g h i) = C.assoc (ιSub f) (ιSub g) (ιSub h) i
+--         ιSub {Γ = Γ} ⟨⟩ = S.⟨⟩ (ιCtx Γ)
+--         ιSub (⟨⟩! f i) = S.⟨⟩! (ιSub f) i
+--         ιSub (⟨ γ , t ⟩) = S.⟨ ιSub γ , ιTm t ⟩
+--         ιSub (p γ) = S.p (ιSub γ)
+--         ιSub (p⟨_,_⟩ γ a i) = S.p⟨ ιSub γ , ιTm a ⟩ i
+--         ιSub (pqη γ i) = S.pqη (ιSub γ) i
+--         ιSub ((⟨ γ , t ⟩∘ δ) i) = (S.⟨ ιSub γ , ιTm t ⟩∘ ιSub δ) i
+--         ιSub (ιSTLC-is-set .Sub (Γ , Δ) γ δ P Q i j) = C.Hom-set (ιCtx Γ) (ιCtx Δ) (ιSub γ) (ιSub δ)
+--                                                            (λ i → ιSub (P i)) (λ i → ιSub (Q i))
+--                                                            i j
 
-        ιTm = {!   !}
+--         ιTm = {!   !}
 
-        the-hom : Precategory.Hom (STLC-lam-bools .fst) ιSTLC-LamBool-model x
-        the-hom .fst .fst .STLC-Functor.F .Functor.F₀ = ιCtx
-        the-hom .fst .fst .STLC-Functor.F .Functor.F₁ = ιSub
-        the-hom .fst .fst .STLC-Functor.F .Functor.F-id = {!   !}
-        the-hom .fst .fst .STLC-Functor.F .Functor.F-∘ = {!   !}
-        the-hom .fst .fst .STLC-Functor.pres-⊤ = {!   !}
-        the-hom .fst .fst .STLC-Functor.Fty = {!   !}
-        the-hom .fst .fst .STLC-Functor.F𝕋 = {!   !}
-        the-hom .fst .snd = {!   !}
-        the-hom .snd = {!   !}  
+--         the-hom : Precategory.Hom (STLC-lam-bools .fst) ιSTLC-LamBool-model x
+--         the-hom .fst .fst .STLC-Functor.F .Functor.F₀ = ιCtx
+--         the-hom .fst .fst .STLC-Functor.F .Functor.F₁ = ιSub
+--         the-hom .fst .fst .STLC-Functor.F .Functor.F-id = {!   !}
+--         the-hom .fst .fst .STLC-Functor.F .Functor.F-∘ = {!   !}
+--         the-hom .fst .fst .STLC-Functor.pres-⊤ = {!   !}
+--         the-hom .fst .fst .STLC-Functor.Fty = {!   !}
+--         the-hom .fst .fst .STLC-Functor.F𝕋 = {!   !}
+--         the-hom .fst .snd = {!   !}
+--         the-hom .snd = {!   !}   
