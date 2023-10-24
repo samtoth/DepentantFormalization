@@ -1,24 +1,27 @@
 open import Cat.Prelude
+open import Cat.Strict
 
-module Theories.STLC.Presheaf {o} {ℓ} κ (𝓒 : Precategory (o ⊔ lsuc ℓ) ℓ) where
+module Theories.STLC.Presheaf {ℓ} (𝓒 : Precategory ℓ ℓ) where
 
-    module C = Precategory 𝓒
+    private module C = Precategory 𝓒
     open Functor
     open _=>_
 
     open import Theories.STLC.Model
-    open import Theories.STLC.Ctxs hiding (ℓ)
-    open import Theories.STLC.Contextual
-
+    -- open import Theories.STLC.Ctxs hiding (ℓ)
+    -- open import Theories.STLC.Contextual
+    
+    open import Cat.Instances.StrictCat
+    open import Cat.Instances.Product
     open import Cat.Functor.Base
+    open import Cat.Functor.Bifunctor
+    open import Cat.Functor.Naturality
     open import Cat.CartesianClosed.Instances.PSh
+    open import Cat.Diagram.Product
+    open Binary-products (PSh ℓ 𝓒) (PSh-products {C = 𝓒})
+    open import Cat.Reasoning (PSh ℓ 𝓒)
 
-    open Precategory
-
-    Psh-model : Contextual
-    Psh-model .Contextual.Typ = PSh κ 𝓒  .Ob
-    Psh-model .Contextual.TrmSet = {!   !}
-    Psh-model .Contextual._[_]C = {!   !}
-    Psh-model .Contextual.Cid = {!   !}
-    Psh-model .Contextual.idL = {!   !}
-    Psh-model Contextual.[id]C = {!   !}
+    -- this is now trivial via CCC
+    open import Theories.STLC.CCC
+    PSh-model : STLC
+    PSh-model = CCC-model (PSh ℓ 𝓒) (PSh-terminal {C = 𝓒}) (PSh-products {C = 𝓒}) PSh-closed

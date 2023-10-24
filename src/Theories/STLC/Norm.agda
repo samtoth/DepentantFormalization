@@ -1,4 +1,4 @@
-module Theories.STLC.Norm where
+module Theories.STLC.Norm  where
 
 open import 1Lab.Prelude hiding (⌜_⌝ ; _<*>_)
 open import Cat.Base
@@ -13,51 +13,42 @@ open import Theories.STLC.Model
 open import Theories.STLC.Ctxs
 open import Cat.Displayed.Total
 
--- First the naive normalisation function
+open Model
 
-ToNorm : STLC-Functor ιSTLC-model Model.NF
-ToNorm = ιSTLC-is-initial .Initial.has⊥ (Model.NF , Model.NFLam , Model.NFBool) .is-contr.centre .Total-hom.hom
+Tyₛ : Set lzero
+Tyₛ = el Ty Ty-is-set
 
-PresTy : ∀ (A) → ToNorm .STLC-Functor.Fty A ≡ A
-PresTy 𝔹 = refl
-PresTy (A ⇒ B) = ap₂ _⇒_ (PresTy A) (PresTy B)
+module Psh = Precategory (PSh lzero (Rens Tyₛ))
+
+inclVar : Var Γ A → ∣ Term Γ A ∣ 
+inclVar vz = ιvz
+inclVar (vs v) = ιvsuc (inclVar v)
+
+inclRen : R.Hom Δ Γ → ιSTLC Sub (Γ , Δ)
+inclRen ! = ⟨⟩
+inclRen (ρ ⊕ v) = ⟨ inclRen ρ , inclVar v ⟩
+
+incWk1 : ∀ (ρ : Ren Γ Δ) → inclRen (wk1Ren {A = A} ρ) ≡ p (inclRen (wk2Ren ρ))
+incWk1 ! = sym p⟨ _ , _ ⟩
+incWk1 (ρ ⊕ x) = sym p⟨ _ , _ ⟩
+
+incRenId : ∀ Γ → inclRen (idRen {Γ = Γ}) ≡ ιSTLC.Id
+incRenId ε = ⟨⟩! _
+incRenId (Γ , x) = {!   !}
+
+Ren→Subs : Functor (Rens Tyₛ) Subs
+Ren→Subs .F₀ = id
+Ren→Subs .F₁ = inclRen
+Ren→Subs .F-id = incRenId _
+Ren→Subs .F-∘ f g = {!   !}
+
+TmPs : Ty → Psh.Ob
+TmPs A .F₀ Γ = Term Γ A
+TmPs A .F₁ ρ t = t [ inclRen ρ ]
+TmPs A .F-id = funext λ x →  ap (x [_]) (incRenId _) ∙ (x [Id])
+TmPs A .F-∘ = {!   !}
 
 
-PresCtx : ∀ (Γ) → ToNorm .STLC-Functor.F .F₀ Γ ≡ Γ
-PresCtx (ε) = refl
-PresCtx (Γ , x) = λ i → (PresCtx Γ i) , (PresTy x i)
-
-toNorm : ∀ {Γ A} → ιSTLC Tm (Γ , A) → Val Nf Γ A
-toNorm {Γ} {A} = transp (λ i → Val Nf (PresCtx Γ i) (PresTy A i)) i0 ∘ ToNorm .STLC-Functor.F𝕋 .η Γ
-
-toNorm' : ∀ {Γ A} → ιSTLC Tm (Γ , A) → Val Nf (ToNorm .STLC-Functor.F .F₀ Γ) (ToNorm .STLC-Functor.Fty A)
-toNorm' {Γ} {A} = ToNorm .STLC-Functor.F𝕋 .η Γ
-
-nf' : ∀ {Γ A} → ιSTLC Tm (Γ , A) → ιSTLC Tm (_ , _)
-nf' = ⌜_⌝ ∘ toNorm'
-
-nf⁰ : ∀ {Γ A} → ιSTLC Tm (Γ , A) → ιSTLC Tm (Γ , A)
-nf⁰ = ⌜_⌝ ∘ toNorm
-
-test : ∀ {A B} {f : ιSTLC Tm (ε , A ⇒ B)} → nf⁰ {ε} (lam (app f)) ≡ nf⁰ f
-test = {!  refl !}
-
-idfun : ∀ {A} → ιSTLC Tm (Γ , A ⇒ A)
-idfun = lam ιvz
-
-_<*>_ : ιSTLC Tm (Γ , A ⇒ B) → ιSTLC Tm (Γ , A) → ιSTLC Tm (Γ , B)
-f <*> x = app f [ ⟨ ιSTLC.Id , x ⟩ ]
-
-infixl 25 _<*>_
-
-lamapp : ∀ {A B} (f : ιSTLC Tm (ε , A ⇒ B)) → ιSTLC Tm (ε , A ⇒ B)
-lamapp f = lam (app f)
-
-and : ιSTLC Tm (Γ , (𝔹 ⇒ 𝔹 ⇒ 𝔹))
-and = lam (elim𝔹 ιvz idfun (lam false))
-
-testAnd : nf'  {Γ , 𝔹} (and <*> false <*> ιvz)  ≡ false
-testAnd = refl
-
-not : ιSTLC Tm (Γ , (𝔹 ⇒ 𝔹))
-not = lam (elim𝔹 ιvz false true)
+⌜ValPs⌝ : (v : ValKind) → (A : Ty) → Psh.Hom (ValPs v A) (TmPs A)
+⌜ValPs⌝ v A .η Γ val = ⌜ val ⌝ 
+⌜ValPs⌝ v A .is-natural Γ Δ ρ = {!   !} 

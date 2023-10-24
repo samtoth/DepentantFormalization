@@ -80,8 +80,8 @@ Ctx≃List = Iso→Equiv (to , iso from tofrom fromto)
         fromto ε = refl
         fromto (Γ , A) i = fromto Γ i , A
 
-Ctx-discrete : Discrete ty → Discrete (Ctx ty)
-Ctx-discrete d = transp (λ i → Discrete (ua Ctx≃List (~ i))) i0 decide
+Ctx-discrete : ∀ {ℓ} {ty : Type ℓ} → Discrete ty → Discrete (Ctx ty)
+Ctx-discrete {ℓ} {ty} d = transp (λ i → Discrete (ua (Ctx≃List {ℓ} {ty}) (~ i))) i0 decide
   where decide : _
         decide [] [] = yes refl
         decide [] (x ∷ b) = no (∷≠[] ∘ sym)
@@ -112,111 +112,3 @@ CtxF = record { F₀ = λ t →  el (Ctx ∣ t ∣) (Ctx-is-set (t .is-tr))
         F∘ f g ε = refl
         F∘ f g (Γ , A) i = (F∘ f g Γ i) , f (g A)
 
-
-data Els {ℓ₁ ℓ₂} {ty : Type ℓ₁} (el : ty → Type ℓ₂) : (Γ : Ctx ty) → Type (ℓ₁ ⊔ ℓ₂) where
-  ! : Els el ε
-  _⊕_ : {Γ : Ctx ty} {A : ty} → Els el Γ → el A → Els el (Γ , A)
-
-qEls : ∀ {el : ty → Type ℓ} → Els el (Γ , A) → el A
-qEls (_ ⊕ e) = e
-
-pEls : ∀ {el : ty → Type ℓ} → Els el (Γ , A) → Els el Γ
-pEls (γ ⊕ _) = γ
-
-mapEls : {el₁ el₂ : ty → Type ℓ} → (∀ {ty} → el₁ ty → el₂ ty) → Els el₁ Γ → Els el₂ Γ
-mapEls f ! = !
-mapEls f (s ⊕ x) = mapEls f s ⊕ f x
-
-data Var {ℓ} {ty : Type ℓ} : Ctx ty → ty → Type ℓ where
-  vz : ∀ {Γ} {A} → Var (Γ , A) A
-  vs : ∀ {Γ} {A} {B} → Var Γ A → Var (Γ , B) A
-  
--- Variables are also decidable
-
-VCode : Var Γ A → Var Γ A → Type ℓ
-VCode {Γ = Γ , B} {B} vz v' = {! v'  !}
-VCode (vs v) vz = Lift _ ⊥
-VCode (vs v) (vs v') = VCode v v' 
-
-vs-inj : ∀ {v v' : Var Γ A} → vs v ≡ vs v' → v ≡ v'
-vs-inj = {!   !}
-
-_≟V_ : ∀ (v v' : Var Γ A) → Dec (v ≡ v')
-_≟V_ {Γ} {A} = {!   !} 
-
-
-Ren : ∀ {ℓ} {ty : Type ℓ} (A B : Ctx ty) → Type ℓ
-Ren Γ Δ = Els (Var Γ) Δ
-
-wk1Ren : Ren Γ Δ → Ren (Γ , A) Δ
-wk1Ren ! = !
-wk1Ren (γ ⊕ x) = wk1Ren γ ⊕ vs x
-
-wk2Ren : Ren Γ Δ → Ren (Γ , A) (Δ , A)
-wk2Ren x = (wk1Ren x) ⊕ vz
-
-idRen : Ren Γ Γ
-idRen {Γ = ε} = !
-idRen {Γ = Γ , x} = wk2Ren idRen
-
-
-
-_[_]v : Var Γ A → Ren Δ Γ → Var Δ A
-vz [ _ ⊕ x ]v = x
-vs v [ γ ⊕ x ]v = v [ γ ]v
-
-_[id]v : (v : Var Γ A) → v [ idRen ]v ≡ v
-vz [id]v = refl
-vs v [id]v = {!   !}
-
-
-Ren∘ : ∀ {Γ Δ Σ : Ctx ty} → Ren Δ Σ → Ren Γ Δ → Ren Γ Σ
-Ren∘ ! δ = !
-Ren∘ (γ ⊕ x) δ = (Ren∘ γ δ) ⊕ (x [ δ ]v)
-
-wk2∘ : ∀ {Γ Δ Σ} {A : ty} (γ : Ren Δ Σ) (δ : Ren Γ Δ) → wk2Ren {A = A} (Ren∘ γ δ) ≡ Ren∘ (wk2Ren γ) (wk2Ren δ)
-wk2∘ γ δ  = {!   !}
-
-wk1η : ∀ {Γ Δ Σ} {A : ty} → (γ : Ren Δ Σ) (f : Ren Γ Δ) (x : Var Γ A) → Ren∘ (wk1Ren γ) (f ⊕ x) ≡ Ren∘ γ f 
-wk1η γ f x = {!   !}
-
-idrRen : ∀ (f : Ren Γ Δ) → Ren∘ f idRen ≡ f
-idrRen ! = refl
-idrRen (f ⊕ x) = λ i → (idrRen f i) ⊕ (x [id]v) i
-
-idlRen : ∀ (f : Ren Γ Δ) → Ren∘ idRen f ≡ f
-idlRen ! = refl
-idlRen (f ⊕ x) = λ i → (wk1η _ _ x ∙ idlRen f) i ⊕ x
-
-Rens : ∀ (ty : Type ℓ) → Precategory _ _
-Rens ty .Precategory.Ob = Ctx ty
-Rens _ .Precategory.Hom = Ren
-Rens _ .Precategory.Hom-set = {!   !}
-Rens _ .Precategory.id = idRen
-Rens _ .Precategory._∘_ = Ren∘
-Rens _ .Precategory.idr = idrRen
-Rens _ .Precategory.idl = idlRen
-Rens _ .Precategory.assoc = {!   !}
-
-RensTerminal : ∀ {ty : Type ℓ} → Terminal (Rens ty)
-RensTerminal .Terminal.top = ε
-RensTerminal .Terminal.has⊤ = λ x → contr ! (λ { ! → refl})
-
-
-
-extendRens : ty → Functor (Rens ty) (Rens ty)
-extendRens A .Functor.F₀ Γ = Γ , A
-extendRens A .Functor.F₁ = wk2Ren
-extendRens A .Functor.F-id = refl
-extendRens A .F-∘ f g = wk2∘ f g
-
-
-
-module _ {o ℓ} {ty : Type o} (T : Ctx ty → ty → Type ℓ) where
-  Subst : (A B : Ctx ty) → Type (o ⊔ ℓ)
-  Subst Γ Δ = Els (T Γ) Δ
-
-  Ren→Subst : (f : ∀ {Γ} {A} → Var Γ A → T Γ A) → (∀ {Γ Δ} → Ren Γ Δ → Subst Γ Δ)
-  Ren→Subst f ! = !
-  Ren→Subst f (γ ⊕ x) = (Ren→Subst f γ) ⊕ (f x) 
-    

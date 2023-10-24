@@ -68,6 +68,9 @@ data ιSTLC : (i : 𝓘) → args i → Type where
 ιvsuc : ιSTLC Tm (Γ , A) → ιSTLC Tm ((Γ , B) , A)
 ιvsuc x = x [ p Id ]
 
+Term : (Γ : Ctx Ty) → (A : Ty) → Set lzero
+Term Γ A = el (ιSTLC Tm (Γ , A)) (ιSTLC-is-set Tm _)
+
 open import Theories.STLC.Model
 open import Cat.Diagram.Terminal
 open import Cat.Diagram.Product
@@ -139,7 +142,7 @@ extend A .Functor.F-∘ = ∘↑
 
 ιSTLC-model : STLC 
 ιSTLC-model .STLC.𝓒 = Subs
-ιSTLC-model .STLC.𝓒-strict = Ctx-is-set Ty-is-set
+-- ιSTLC-model .STLC.𝓒-strict = Ctx-is-set Ty-is-set
 ιSTLC-model .STLC.𝓒-term = SubsTerminal
 ιSTLC-model .STLC.Ty = Ty
 ιSTLC-model .STLC.𝕋 = ι𝕋

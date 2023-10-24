@@ -29,8 +29,8 @@ record STLC {ℓ ℓ'} : Type (lsuc (ℓ ⊔ ℓ')) where
   field
     𝓒 : Precategory ℓ ℓ'
 
-  field
-    𝓒-strict : is-strict 𝓒
+  -- field
+  --   𝓒-strict : is-strict 𝓒
 
   open Precategory 𝓒 public renaming (Ob to Ctx ; Hom to Sub ; _∘_ to _∘ᶜ_ ; id to Cid) using ()
   open Cat.Functor.Hom 𝓒
@@ -54,6 +54,10 @@ record STLC {ℓ ℓ'} : Type (lsuc (ℓ ⊔ ℓ')) where
     Ty : Type ℓ
     -- ty-set : is-set Ty
 
+  -- Tyₛ : Set ℓ
+  -- Tyₛ = el Ty ty-set
+
+  field
     𝕋 : Ty → Ob (PSh ℓ' 𝓒)
 
   Tm : Ty → Ctx → Type ℓ'
